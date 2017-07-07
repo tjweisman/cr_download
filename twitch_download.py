@@ -37,38 +37,21 @@ def get_gands_id():
                      headers=headers, params=params)
     return r.json()["users"][0]["_id"]
 
-def get_vod_list():
+def get_vod_list(cr_filter=True):
     #get JSON array of past broadcast VODs on the G&S channel, most
     #recent first
     params = {"broadcast_type":"archive"}
     url = "https://api.twitch.tv/kraken/channels/{}/videos".format(GANDS_ID)
     r = requests.get(url, headers=headers,params=params)
-    return r.json()["videos"]
+    vods = r.json()["videos"]
+
+    if cr_filter:
+        vods = [vod for vod in vods if critrole_video(vod)]
+
+    return vods
 
 def get_titles(video_list):
     return [video["title"] for video in video_list]
-
-def scan_vods(video_json):
-    #iterate through a JSON array of VODs, prompting the user to
-    #download each one if its title looks like it's a CR episode.
-
-    #return an array of filenames of episodes converted to mp3
-    cr_videos = [video for video in video_json if critrole_video(video)]
-    num = len(cr_videos)
-    files = []
-    print "{} video{} found.".format(num, ("" if num == 1 else "s"))
-    for video in cr_videos:
-        conf_str = ("Download possible CR episode with title:\n\"{}\"\n"
-                    "as \"ep{}.mp3\"? [Y]/N\n")
-
-        confirm = "X"
-        while confirm.strip().upper() not in ["Y", "N", ""]:
-            confirm = raw_input(conf_str.format(video["title"],
-                                                guess_ep_num(video["title"])))
-        if confirm.strip().upper() in ["Y", ""]:
-            mp3 = dload_ep_audio(video, guess_ep_num(video["title"]))
-            files.append(mp3)
-    return files
 
 def dload_ep_audio(video, ep_num):
     #use streamlink app to download VOD as "tmp.mp4," and convert it
@@ -81,4 +64,5 @@ def dload_ep_audio(video, ep_num):
     subprocess.call(shlex.split(cmd))
     mp3_file = "ep{}.mp3".format(ep_num)
     subprocess.call(["ffmpeg", "-i", "tmp.mp4", mp3_file])
-    return mp3_file
+    #WOW this is some great error handling
+    return True

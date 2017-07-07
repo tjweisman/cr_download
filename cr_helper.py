@@ -15,12 +15,56 @@ spent some time commenting my code.
 
 """
 
-import twitch_download, drive_upload
+import twitch_download, drive_upload, sys
+from datetime import timedelta
+from argparse import ArgumentParser
+
+def confirm(prompt):
+    confirm = "X"
+    while confirm.strip().upper() not in ["Y", "N", ""]:
+        confirm = raw_input(prompt + " [Y]/N ")
+        if confirm.strip().upper() in ["Y", ""]:
+            return True
+    return False
+
+def init_args():
+    parser = ArgumentParser(description="Download .mp3 files for Critical "
+                            "Role episodes from Twitch")
+    
+    parser.add_argument("-n", "--no-upload", dest="upload",
+                        action="store_false", default=True,
+                        help="Don't upload .mp3s to Google Drive")
+
+    parser.add_argument("-v", dest="verbose", action="store_true",
+                        default=False, help="Show more details about vods")
+
+    return parser.parse_args(sys.argv[1:])
+
+def main(arguments):
+    vods = twitch_download.get_vod_list()
+    to_download = []
+    
+    print "{} vod(s) found.".format(len(vods))
+
+    for vod in vods:
+        print "Possible CR Episode found: {}".format(vod["title"])
+        print "Length: {}".format(timedelta(seconds=int(vod["length"])))
+
+        ep_title = "ep{}.mp3".format(
+            twitch_download.guess_ep_num(vod["title"]))
+                                  
+        if confirm("Download vod as {}?".format(ep_title)):
+            to_download.append((vod, ep_title))
+
+    print "Downloading/uploading {} vod(s).".format(len(to_download))
+
+    for vod, ep_title in to_download:
+        success = twitch_download.dload_ep_audio(vod, ep_title)
+        if success and arguments.upload:
+            print "Uploading {} to 'xfer' folder in Google Drive...".format(
+                ep_title)
+            drive_upload.single_xfer_upload(ep_title)
 
 if __name__ == "__main__":
-    vods = twitch_download.get_vod_list()
-    vod_files = twitch_download.scan_vods(vods)
-
-    for vod in vod_files:
-        print "Uploading {} to 'xfer' folder in Google Drive...".format(vod)
-        drive_upload.single_xfer_upload(vod)
+    arguments = init_args()
+    main(arguments)
