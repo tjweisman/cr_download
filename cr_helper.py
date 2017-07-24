@@ -30,6 +30,10 @@ def confirm(prompt):
 def init_args():
     parser = ArgumentParser(description="Download .mp3 files for Critical "
                             "Role episodes from Twitch")
+
+    parser.add_argument("-l", dest="limit", type=int, default=10,
+                        help=("Set max number of VODs to retrieve "
+                              "when searching for CR episodes"))
     
     parser.add_argument("-n", "--no-upload", dest="upload",
                         action="store_false", default=True,
@@ -38,10 +42,11 @@ def init_args():
     parser.add_argument("-v", dest="verbose", action="store_true",
                         default=False, help="Show more details about vods")
 
+
     return parser.parse_args(sys.argv[1:])
 
 def main(arguments):
-    vods = twitch_download.get_vod_list()
+    vods = twitch_download.get_vod_list(limit=arguments.limit)
     to_download = []
     
     print "{} vod(s) found.".format(len(vods))

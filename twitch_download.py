@@ -37,10 +37,11 @@ def get_gands_id():
                      headers=headers, params=params)
     return r.json()["users"][0]["_id"]
 
-def get_vod_list(cr_filter=True):
+def get_vod_list(cr_filter=True, limit=10):
     #get JSON array of past broadcast VODs on the G&S channel, most
     #recent first
-    params = {"broadcast_type":"archive"}
+    limit = max(min(limit, 100), 1)
+    params = {"broadcast_type":"archive", "limit":str(limit)}
     url = "https://api.twitch.tv/kraken/channels/{}/videos".format(GANDS_ID)
     r = requests.get(url, headers=headers,params=params)
     vods = r.json()["videos"]
@@ -62,7 +63,6 @@ def dload_ep_audio(video, ep_num):
     cmd = "streamlink --config .streamlinkconfig {} 360p30 -o tmp.mp4".format(
         video_url)
     subprocess.call(shlex.split(cmd))
-    mp3_file = "ep{}.mp3".format(ep_num)
-    subprocess.call(["ffmpeg", "-i", "tmp.mp4", mp3_file])
+    subprocess.call(["ffmpeg", "-i", "tmp.mp4", ep_num])
     #WOW this is some great error handling
     return True
