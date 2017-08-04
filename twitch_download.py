@@ -60,7 +60,7 @@ def dload_ep_audio(video, ep_num):
 
     #return filename of converted file
     video_url = "twitch.tv/videos/" + video["_id"][1:]
-    cmd = "streamlink --config .streamlinkconfig {} 360p30 -o tmp.mp4".format(
+    cmd = "streamlink --config .streamlinkconfig {} 360p30 -f -o tmp.mp4".format(
         video_url)
     subprocess.call(shlex.split(cmd))
     subprocess.call(["ffmpeg", "-i", "tmp.mp4", ep_num])

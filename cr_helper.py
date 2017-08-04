@@ -33,7 +33,7 @@ def init_args():
 
     parser.add_argument("-l", dest="limit", type=int, default=10,
                         help=("Set max number of VODs to retrieve "
-                              "when searching for CR episodes"))
+                              "when searching for CR episodes (default: 10)"))
     
     parser.add_argument("-n", "--no-upload", dest="upload",
                         action="store_false", default=True,
