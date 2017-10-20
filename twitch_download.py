@@ -18,8 +18,7 @@ headers = {"Client-ID" : CLIENT_ID,
 
 def critrole_video(video):
     #true if the video object title looks like a Critical Role episode title
-    return re.match(".*Critical Role Ep(isode)? ?.*", video["title"],
-                    flags=re.I)
+    return 
 
 def guess_ep_num(video_title):
     #guess the episode number from the title via regex
@@ -37,7 +36,7 @@ def get_gands_id():
                      headers=headers, params=params)
     return r.json()["users"][0]["_id"]
 
-def get_vod_list(cr_filter=True, limit=10):
+def get_vod_list(cr_filter=None, limit=10):
     #get JSON array of past broadcast VODs on the G&S channel, most
     #recent first
     limit = max(min(limit, 100), 1)
@@ -46,8 +45,9 @@ def get_vod_list(cr_filter=True, limit=10):
     r = requests.get(url, headers=headers,params=params)
     vods = r.json()["videos"]
 
-    if cr_filter:
-        vods = [vod for vod in vods if critrole_video(vod)]
+    if cr_filter is not None:
+        vods = [vod for vod in vods if re.match(cr_filter, vod["title"],
+                                                flags=re.I)]
 
     return vods
 
@@ -60,7 +60,7 @@ def dload_ep_audio(video, ep_num):
 
     #return filename of converted file
     video_url = "twitch.tv/videos/" + video["_id"][1:]
-    cmd = "streamlink --config .streamlinkconfig {} 360p30 -f -o tmp.mp4".format(
+    cmd = "streamlink --config .streamlinkconfig {} 360p -f -o tmp.mp4".format(
         video_url)
     subprocess.call(shlex.split(cmd))
     subprocess.call(["ffmpeg", "-i", "tmp.mp4", ep_num])
