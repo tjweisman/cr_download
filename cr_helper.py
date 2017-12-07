@@ -56,38 +56,68 @@ def init_args():
     parser.add_argument("-w", action="store_const", dest="regex",
                         const=WIDE_CR_REGEX, help = "use a less "
                         "restrictive regex to match possible CR vods")
+
+    parser.add_argument("-s", "--select", action="store_true",
+                        help="list all most recent VODs and select "
+                        "which one to download")
                         
     return parser.parse_args(sys.argv[1:])
-                        
+
+def prompt_title(vod):
+    ep_title = "ep{}.mp3".format(
+            twitch_download.guess_ep_num(vod["title"]))
+    title = raw_input(
+                "Enter title to save vod under (default: %s): "%ep_title)
+    if len(title.strip()) == 0:
+        title = ep_title
+        
+    return title
+
+    
+def ask_each_vod(vods):
+    to_download = []
+    for vod in vods:
+        print "Possible CR Episode found: {}".format(vod["title"])
+        print "Length: {}".format(timedelta(seconds=int(vod["length"])))
+
+        if confirm("Download vod?"):
+            title = prompt_title(vod)
+            to_download.append((vod, title))
+
+    return to_download
+
 def main(arguments):
-    vods = twitch_download.get_vod_list(cr_filter=arguments.regex,
+    cr_filter = arguments.regex
+    
+    if arguments.select:
+        cr_filter = None
+        
+    vods = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=arguments.limit)
                         
-    to_download = []
     
     print "%d vod(s) found."%len(vods)
     for i, vod in enumerate(vods):
         print "%d. (%s) %s"%(i+1,
                              timedelta(seconds=int(vod["length"])),
                              vod["title"])
-                        
-    for vod in vods:
-        print "Possible CR Episode found: {}".format(vod["title"])
-        print "Length: {}".format(timedelta(seconds=int(vod["length"])))
-                            
-        ep_title = "ep{}.mp3".format(
-            twitch_download.guess_ep_num(vod["title"]))
 
-        if confirm("Download vod?"):
-            title = raw_input(
-                "Enter title to save vod under (default: %s): "%ep_title)
-            if len(title.strip()) == 0:
-                title = ep_title
-                
-            to_download.append((vod, ep_title))
+    to_download = []
+    
+    if arguments.select:
+        index = raw_input("Select a vod to download (hit enter to not"
+                          " download any vods): ")
+        try:
+            if int(index) > 0 and int(index) <= len(vods):
+                title = prompt_title(vods[int(index)])
+                to_download = [(vods[int(index)], title)]
+        except ValueError:
+            pass
+    else:
+        to_download = ask_each_vod(vods)
 
     if arguments.upload:
-        print "Downloading/uploading {} vod(s)."%len(to_download)
+        print "Downloading/uploading %d vod(s)."%len(to_download)
     else:
         print "Downloading %d vod(s)"%len(to_download)
         
