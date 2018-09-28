@@ -12,6 +12,7 @@ import essentia.standard as es
 import acoustid
 from tqdm import tqdm
 
+from .. import media_utils
 from autocutter_utils import *
 
 CUT = 0
@@ -189,10 +190,9 @@ def recut_files(input_files, transition_times):
 
 
 
-def autocut(input_dir, input_pattern, output_file, window_time = 10.0):
+def autocut(audio_files, output_file, window_time = 10.0):
     sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
     
-    audio_files = file_list(input_dir, input_pattern)
     fingerprints, total_length = load_fingerprints(audio_files)
     total_print_len = sum([len(chunk) for chunk in fingerprints])
 
@@ -210,10 +210,17 @@ def autocut(input_dir, input_pattern, output_file, window_time = 10.0):
     repl_dict = {}
     for infile in audio_files:
         base = os.path.basename(infile)
-        tbase = change_ext(base, ".wav")
+        tbase = media_utils.change_ext(base, ".wav")
         repl_dict[infile] = os.path.join(tmpdir, tbase)
 
     to_concat = recut_files(repl_dict, pcm_transitions)
-    autocutter_utils.merge_audio_files(to_concat, output_file)
+    media_utils.merge_audio_files(to_concat, output_file)
     
     shutil.rmtree(tmpdir)
+
+def autocut_pattern(input_dir, input_pattern, output_file,
+                    window_time = 10.0):
+    audio_files = media_utils.file_list(input_dir, input_pattern)
+    autocut(audio_files, output_file, window_time)
+
+    

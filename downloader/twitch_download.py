@@ -8,13 +8,12 @@ Once again this code is super brittle.
 
 """
 
-import requests, json, re, subprocess, shlex
-import tempfile
-import shutil
-import os
+import re
+import subprocess
+import shlex
 
-from autocutter import autocutter
-from autocutter.autocutter_utils import file_list
+import requests
+import json
 
 CLIENT_ID="ignduriqallck9hugiw15zfaqdvgwc"
 GANDS_ID="36619809"

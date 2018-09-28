@@ -21,10 +21,10 @@ from datetime import timedelta
 from argparse import ArgumentParser
 import tempfile
 import os
+import shutil
 
-import twitch_download, drive_upload
-from autocutter.autocutter_utils import change_ext
-
+from downloader import twitch_download, drive_upload
+import media_utils
 
 STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 
@@ -101,23 +101,43 @@ def prompt_title(vod):
     return title
 
     
-def ask_each_vod(vods):
+def ask_each_vod(vods, ask_title=True):
     to_download = []
     for vod in vods:
         print u"Possible CR Episode found: {}".format(vod["title"])
         print "Length: {}".format(timedelta(seconds=int(vod["length"])))
 
         if confirm("Download vod?"):
-            title = prompt_title(vod)
-            to_download.append((vod, title))
+            if ask_title:
+                title = prompt_title(vod)
+                to_download.append((vod, title))
+            else:
+                to_download.append((vod, None))
 
     return to_download
+
+def autocut_files(directory, filelist, output_file):
+    filepaths = [os.path.join(directory, filename) for filename in filelist]
+    try:
+        print("Attempting to autocut files...")
+        autocutter.autocut(filepaths, output_file)
+    except autocutter.AutocutterException:
+        print("Autocut failed. Merging uncut audio...")
+        media_utils.merge_audio_files(filepaths, output_file)
+
+def upload_file(title):
+        ostr = u"Uploading {} to 'xfer' folder in Google Drive..."
+        print(ostr.format(title))
+        drive_upload.single_xfer_upload(title)
 
 def main(arguments):
     cr_filter = arguments.regex
     
     if arguments.select:
         cr_filter = None
+
+    if arguments.autocut:
+        from autocutter import autocutter
         
     vods = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=arguments.limit)
@@ -144,31 +164,44 @@ def main(arguments):
     else:
         to_download = ask_each_vod(vods)
 
+    if arguments.merge and len(vods) > 0:
+        merge_title = prompt_title(vods[0])
+
     if arguments.upload:
         print "Downloading/uploading %d vod(s)."%len(to_download)
     else:
         print "Downloading %d vod(s)"%len(to_download)
 
+
+    filelist = []
+    tmpdir = tempfile.mkdtemp()
     for i, (vod, ep_title) in enumerate(to_download):
-        tmpdir = tempfile.mkdtemp()
         filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
         twitch_download.dload_ep_video(vod, filename)
         if arguments.merge:
-            twitch_download.mp4_to_audio(filename,
-                                         change_ext(filename, ".wav"),
-                                         segment = arguments.autocut,
-                                         segment_fmt = ".wav")
+            filelist += media_utils.mp4_to_audio(filename,
+                                                 change_ext(filename, ".wav"),
+                                                 segment = arguments.autocut,
+                                                 segment_fmt = ".wav")
         else:
-            twitch_download.mp4_to_audio(filename, ep_title,
-                                         segment = arguments.autocut,
-                                         segment_fmt = ".wav")
+            filelist = media_utils.mp4_to_audio(filename, ep_title,
+                                                segment = arguments.autocut,
+                                                segment_fmt = ".wav")
             if arguments.autocut:
-                pass
-        
-        if success and arguments.upload:
-            print u"Uploading {} to 'xfer' folder in Google Drive...".format(
-                ep_title)
-            drive_upload.single_xfer_upload(ep_title)
+                autocut_files(tmpdir, filelist, ep_title)
+                    
+            if arguments.upload:
+                upload_file(ep_title)
+    if arguments.merge:
+        if arguments.autocut:
+            autocut_files(tmpdir, filelist, merge_title)
+        else:
+            files = [os.path.join(tempdir, filename) for filename in filelist]
+            media_utils.merge_audio_files(files, merge_title)
+        if arguments.upload:
+            upload_file(merge_title)
+
+    shutil.rmtree(tmpdir)
                             
 if __name__ == "__main__":
     arguments = init_args()
