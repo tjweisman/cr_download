@@ -3,6 +3,9 @@ from itertools import chain
 from collections import deque
 import pickle
 import subprocess
+import re
+import tempfile
+import shutil
 
 import numpy as np
 import essentia.standard as es
@@ -183,12 +186,13 @@ def recut_files(input_files, transition_times):
         start_index += len(audio)
         
     return edited_files
-        
 
-def autocut(audio_file, output, window_time = 10.0):
+
+
+def autocut(input_dir, input_pattern, output_file, window_time = 10.0):
     sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
     
-    audio_files = file_list("mp3_files", "{}.*mp3".format(audio_file))
+    audio_files = file_list(input_dir, input_pattern)
     fingerprints, total_length = load_fingerprints(audio_files)
     total_print_len = sum([len(chunk) for chunk in fingerprints])
 
@@ -201,12 +205,15 @@ def autocut(audio_file, output, window_time = 10.0):
     pcm_transitions = [(s * fingerprint_len,
                         e * fingerprint_len) for s,e in fp_transitions]
 
-    repl_dict = {infile:infile.replace(".mp3", ".wav")
-                 for infile in audio_files}
+    tmpdir = tempfile.mkdtemp()
     
-    to_concat = recut_files(repl_dict, pcm_transitions)
-    with open("filelist", "w") as filelist:
-        for name in to_concat:
-            filelist.write("file '{}'\n".format(name))
+    repl_dict = {}
+    for infile in audio_files:
+        base = os.path.basename(infile)
+        tbase = change_ext(base, ".wav")
+        repl_dict[infile] = os.path.join(tmpdir, tbase)
 
-    subprocess.call(["ffmpeg", "-f", "concat", "-i", "filelist", output])
+    to_concat = recut_files(repl_dict, pcm_transitions)
+    autocutter_utils.merge_audio_files(to_concat, output_file)
+    
+    shutil.rmtree(tmpdir)
