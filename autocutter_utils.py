@@ -30,3 +30,5 @@ def file_list(directory, pattern):
                             if re.match(pattern, fname)])
     return matched_files
 
+def clamp(val, mn, mx):
+    return min(max(val, mn), mx)

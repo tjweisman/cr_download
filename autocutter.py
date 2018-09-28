@@ -88,31 +88,6 @@ def window_error(window_print, sample_print, check_high_bits = True):
     
     return min(errs)
 
-def load_audio_data(audio_file,
-                    test_mono = None,
-                    test_stereo = None,
-                    test_print = None):
-    
-    stereo_audio = test_stereo
-    mono_audio = test_mono
-    audio_print = test_print
-
-    stereo_loader = es.AudioLoader()
-    cp = es.Chromaprinter()
-    mix = es.MonoMixer()
-
-    if (test_mono == None or
-        test_stereo == None or
-        test_print == None):
-        print("Loading audio file...")
-        stereo_loader.configure(filename = audio_file)
-        (stereo_audio, sample_rate, channels,
-         md5, bitrate, codec) = stereo_loader()
-        print("Downmixing...")
-        mono_audio = mix(stereo_audio, channels)
-
-    return (stereo_audio, mono_audio)
-
 def next_window(chunks, index, size):
     chunk_size = len(chunks[0])
     i = index / chunk_size
@@ -184,22 +159,30 @@ def load_fingerprints(audio_files):
 
     return (prints, total_len)
 
-def recut_files(input_files, transition_times):
-    loader = es.AudioLoader()
-    writer = es.AudioWriter()
-    start_index = 0
 
+
+def recut_files(input_files, transition_times):
+    start_index = 0
+    edited_files = []
     for infile in tqdm(sorted(input_files.keys())):
-        loader.configure(filename = infile)
+        loader = es.AudioLoader(filename = infile)
         audio, sample_rate, channels, md5, bitrate, codec = loader()
-        s_transitions = [(max(start - start_index, 0),
-                                min(end - start_index), len(audio))
+        
+        s_transitions = [(clamp(start - start_index, 0, len(audio)),
+                          clamp(end - start_index, 0, len(audio)))
                                for start, end in transition_times]
+
         
         to_include = np.vstack([audio[s:e] for s,e in s_transitions])
+        
         if len(to_include) > 0:
-            writer.configure(filename = input_files[infile])
+            writer = es.AudioWriter(filename = input_files[infile])
             writer(to_include)
+            edited_files.append(input_files[infile])
+            
+        start_index += len(audio)
+        
+    return edited_files
         
 
 def autocut(audio_file, output, window_time = 10.0):
@@ -218,6 +201,12 @@ def autocut(audio_file, output, window_time = 10.0):
     pcm_transitions = [(s * fingerprint_len,
                         e * fingerprint_len) for s,e in fp_transitions]
 
-    repl_dict = {infile:infile.replace(".mp3", ".wav") for infile in audio_files}
-    recut_files(audio_files, pcm_transitions)
+    repl_dict = {infile:infile.replace(".mp3", ".wav")
+                 for infile in audio_files}
     
+    to_concat = recut_files(repl_dict, pcm_transitions)
+    with open("filelist", "w") as filelist:
+        for name in to_concat:
+            filelist.write("file '{}'\n".format(name))
+
+    subprocess.call(["ffmpeg", "-f", "concat", "-i", "filelist", output])
