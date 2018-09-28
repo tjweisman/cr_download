@@ -1,0 +1,5 @@
+*.mp3
+*.wav
+sample_fingerprints
+mp3_files/*
+episodes/*
