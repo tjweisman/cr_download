@@ -15,13 +15,20 @@ spent some time commenting my code.
 
 """
 
-import twitch_download, drive_upload, sys
+import re
+import sys
 from datetime import timedelta
 from argparse import ArgumentParser
+import tempfile
+import os
 
-DEFAULT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
+import twitch_download, drive_upload
+from autocutter.autocutter_utils import change_ext
 
-WIDE_CR_REGEX = ".*Critical Role.*"
+
+STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
+
+DEFAULT_CR_REGEX = ".*Critical Role.*"
 
 def confirm(prompt):
     confirm = "X"
@@ -34,6 +41,10 @@ def confirm(prompt):
 def init_args():
     parser = ArgumentParser(description="Download .mp3 files for Critical "
                             "Role episodes from Twitch")
+
+    parser.add_argument("-a", dest="autocut", action="store_true",
+                        help=("automatically cut transitions/breaks "
+                              "from episode"))
 
     parser.add_argument("-l", dest="limit", type=int, default=10,
                         help=("Set max number of VODs to retrieve "
@@ -53,19 +64,35 @@ def init_args():
                         const=None, help="don't filter vods at all "
                         "when searching for CR videos")
 
-    parser.add_argument("-w", action="store_const", dest="regex",
-                        const=WIDE_CR_REGEX, help = "use a less "
-                        "restrictive regex to match possible CR vods")
+    parser.add_argument("-s", action="store_const", dest="regex",
+                        const=DEFAULT_CR_REGEX, help = "use a stricter "
+                        "regex to match possible CR vods")
 
-    parser.add_argument("-s", "--select", action="store_true",
+    parser.add_argument("-e", "--select", action="store_true",
                         help="list all most recent VODs and select "
                         "which one to download")
+
+    parser.add_argument("-m", "--merge", action="store_true",
+                        help="merge all downloaded VODs into a single file")
                         
     return parser.parse_args(sys.argv[1:])
 
+def guess_title(title):
+    #guess the episode number from the title via regex
+    m = re.match(".*Critical Role:? (Campaign (\d+):?)? Ep(isode)? ?(\d+).*",
+                 title, flags=re.I)
+    if m:
+        campaign = "1"
+        if m.group(2):
+            campaign = m.group(2)
+            ep = m.group(4)
+        return "c{0}ep{1}.mp3".format(campaign, ep)
+    
+    return "tmp.mp3"
+
+
 def prompt_title(vod):
-    ep_title = "ep{}.mp3".format(
-            twitch_download.guess_ep_num(vod["title"]))
+    ep_title = guess_title(vod["title"])
     title = raw_input(
                 "Enter title to save vod under (default: %s): "%ep_title)
     if len(title.strip()) == 0:
@@ -77,7 +104,7 @@ def prompt_title(vod):
 def ask_each_vod(vods):
     to_download = []
     for vod in vods:
-        print "Possible CR Episode found: {}".format(vod["title"])
+        print u"Possible CR Episode found: {}".format(vod["title"])
         print "Length: {}".format(timedelta(seconds=int(vod["length"])))
 
         if confirm("Download vod?"):
@@ -94,7 +121,8 @@ def main(arguments):
         
     vods = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=arguments.limit)
-                        
+
+    vods.sort(key = lambda vod: vod["recorded_at"])
     
     print "%d vod(s) found."%len(vods)
     for i, vod in enumerate(vods):
@@ -120,11 +148,25 @@ def main(arguments):
         print "Downloading/uploading %d vod(s)."%len(to_download)
     else:
         print "Downloading %d vod(s)"%len(to_download)
+
+    for i, (vod, ep_title) in enumerate(to_download):
+        tmpdir = tempfile.mkdtemp()
+        filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
+        twitch_download.dload_ep_video(vod, filename)
+        if arguments.merge:
+            twitch_download.mp4_to_audio(filename,
+                                         change_ext(filename, ".wav"),
+                                         segment = arguments.autocut,
+                                         segment_fmt = ".wav")
+        else:
+            twitch_download.mp4_to_audio(filename, ep_title,
+                                         segment = arguments.autocut,
+                                         segment_fmt = ".wav")
+            if arguments.autocut:
+                pass
         
-    for vod, ep_title in to_download:
-        success = twitch_download.dload_ep_audio(vod, ep_title)
         if success and arguments.upload:
-            print "Uploading {} to 'xfer' folder in Google Drive...".format(
+            print u"Uploading {} to 'xfer' folder in Google Drive...".format(
                 ep_title)
             drive_upload.single_xfer_upload(ep_title)
                             

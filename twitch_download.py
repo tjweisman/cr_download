@@ -9,24 +9,18 @@ Once again this code is super brittle.
 """
 
 import requests, json, re, subprocess, shlex
+import tempfile
+import shutil
+import os
+
+from autocutter import autocutter
+from autocutter.autocutter_utils import file_list
 
 CLIENT_ID="ignduriqallck9hugiw15zfaqdvgwc"
 GANDS_ID="36619809"
 
 headers = {"Client-ID" : CLIENT_ID,
            "Accept"    : "application/vnd.twitchtv.v5+json"}
-
-def critrole_video(video):
-    #true if the video object title looks like a Critical Role episode title
-    return 
-
-def guess_ep_num(video_title):
-    #guess the episode number from the title via regex
-    m = re.match(".*Critical Role Ep(isode)? ?(\d+).*",
-                 video_title, flags=re.I)
-    if m:
-        return m.groups()[1]
-    return "??"
 
 def get_gands_id():
     #currently not needed, since the G&S ID has already been retrieved
@@ -54,15 +48,9 @@ def get_vod_list(cr_filter=None, limit=10):
 def get_titles(video_list):
     return [video["title"] for video in video_list]
 
-def dload_ep_audio(video, ep_num):
-    #use streamlink app to download VOD as "tmp.mp4," and convert it
-    #to an mp3 file with the appropriate episode number
-
-    #return filename of converted file
+def dload_ep_video(video, name):
     video_url = "twitch.tv/videos/" + video["_id"][1:]
-    cmd = "streamlink --config .streamlinkconfig {} 360p -f -o tmp.mp4".format(
-        video_url)
+
+    cmd = "streamlink --config .streamlinkconfig {} 360p -f -o {}".format(
+        video_url, name)
     subprocess.call(shlex.split(cmd))
-    subprocess.call(["ffmpeg", "-i", "tmp.mp4", ep_num])
-    #WOW this is some great error handling
-    return True
