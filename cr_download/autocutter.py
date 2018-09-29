@@ -209,17 +209,18 @@ def autocut(audio_files, output_file, window_time = 10.0):
                         e * fingerprint_len) for s,e in fp_transitions]
 
     tmpdir = tempfile.mkdtemp()
-    
-    repl_dict = {}
-    for infile in audio_files:
-        base = os.path.basename(infile)
-        tbase = media_utils.change_ext(base, ".wav")
-        repl_dict[infile] = os.path.join(tmpdir, tbase)
 
-    to_concat = recut_files(repl_dict, pcm_transitions)
-    media_utils.merge_audio_files(to_concat, output_file)
-    
-    shutil.rmtree(tmpdir)
+    try:
+        repl_dict = {}
+        for infile in audio_files:
+            base = os.path.basename(infile)
+            tbase = media_utils.change_ext(base, ".wav")
+            repl_dict[infile] = os.path.join(tmpdir, tbase)
+
+        to_concat = recut_files(repl_dict, pcm_transitions)
+        media_utils.merge_audio_files(to_concat, output_file)
+    finally:
+        shutil.rmtree(tmpdir)
 
 def autocut_pattern(input_dir, input_pattern, output_file,
                     window_time = 10.0):

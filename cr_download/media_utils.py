@@ -24,14 +24,14 @@ def change_ext(filename, new_ext):
 def mp4_to_audio_segments(video_file, output_dir, segment_fmt):
     basename = os.path.basename(video_file)
     pattern = os.path.join(
-        output_dst,
+        output_dir,
         change_ext(basename, "%03d{}".format(segment_fmt))
     )
     with tempfile.NamedTemporaryFile() as filelist:
         subprocess.call(["ffmpeg", "-i", video_file, "-f", "segment",
                          "-segment_time", "1800", "-segment_list",
                          filelist.name, pattern])
-    split_files = [filename.strip() for filename in filelist]
+        split_files = [filename.strip() for filename in filelist]
     return split_files
     
 def mp4_to_audio_file(video_file, output_file):

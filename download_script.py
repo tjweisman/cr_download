@@ -23,8 +23,8 @@ import tempfile
 import os
 import shutil
 
-from downloader import twitch_download, drive_upload
-import media_utils
+from cr_download import twitch_download, drive_upload
+from cr_download import media_utils
 
 STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 
@@ -117,6 +117,8 @@ def ask_each_vod(vods, ask_title=True):
     return to_download
 
 def autocut_files(directory, filelist, output_file):
+    from cr_download import autocutter
+    
     filepaths = [os.path.join(directory, filename) for filename in filelist]
     try:
         print("Attempting to autocut files...")
@@ -130,15 +132,50 @@ def upload_file(title):
         print(ostr.format(title))
         drive_upload.single_xfer_upload(title)
 
+def download_vods(to_download, arguments, tmpdir,
+                  merge_title=None):
+    filelist = []
+    for i, (vod, ep_title) in enumerate(to_download):
+        filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
+        twitch_download.dload_ep_video(vod, filename)
+        if arguments.merge:
+            if arguments.autocut:
+                filelist += media_utils.mp4_to_audio_segments(
+                    filename, tmpdir,
+                    segment_fmt = ".wav")
+            else:
+                mfile = os.path.join(
+                    tmpdir, media_utils.change_ext(filename, ".wav"))
+                filelist.append(media_utils.mp4_to_audio_file(filename, mfile))
+                
+        else:
+            if arguments.autocut:
+                filelist = media_utils.mp4_to_audio_segments(
+                    filename, ep_title,
+                    segment_fmt = ".wav")
+                autocut_files(tmpdir, filelist, ep_title)
+            else:
+                media_utils.mp4_to_audio_file(filename, ep_title)
+                    
+            if arguments.upload:
+                upload_file(ep_title)
+                
+    if arguments.merge:
+        if arguments.autocut:
+            autocut_files(tmpdir, filelist, merge_title)
+        else:
+            files = [os.path.join(tmpdir, filename) for filename in filelist]
+            media_utils.merge_audio_files(files, merge_title)
+        if arguments.upload:
+            upload_file(merge_title)
+
+        
 def main(arguments):
     cr_filter = arguments.regex
     
     if arguments.select:
         cr_filter = None
 
-    if arguments.autocut:
-        from autocutter import autocutter
-        
     vods = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=arguments.limit)
 
@@ -162,8 +199,9 @@ def main(arguments):
         except ValueError:
             pass
     else:
-        to_download = ask_each_vod(vods)
+        to_download = ask_each_vod(vods, not arguments.merge)
 
+    merge_title = None
     if arguments.merge and len(vods) > 0:
         merge_title = prompt_title(vods[0])
 
@@ -171,45 +209,12 @@ def main(arguments):
         print "Downloading/uploading %d vod(s)."%len(to_download)
     else:
         print "Downloading %d vod(s)"%len(to_download)
-
-
-    filelist = []
+    
     tmpdir = tempfile.mkdtemp()
-    for i, (vod, ep_title) in enumerate(to_download):
-        filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
-        twitch_download.dload_ep_video(vod, filename)
-        if arguments.merge:
-            if arguments.autocut:
-                filelist += media_utils.mp4_to_audio_segments(
-                    filename, tmpdir,
-                    segment_fmt = ".wav")
-            else:
-                mfile = os.path.join(
-                    tmpdir, media_utils.change_ext(filename, ".wav"))
-                filelist.append(media_utils.mp4_to_audio(filename, mfile))
-                
-        else:
-            if arguments.autocut:
-                filelist = media_utils.mp4_to_audio_segments(
-                    filename, ep_title,
-                    segment_fmt = ".wav")
-                autocut_files(tmpdir, filelist, ep_title)
-            else:
-                media_utils.mp4_to_audio(filename, ep_title)
-                    
-            if arguments.upload:
-                upload_file(ep_title)
-                
-    if arguments.merge:
-        if arguments.autocut:
-            autocut_files(tmpdir, filelist, merge_title)
-        else:
-            files = [os.path.join(tempdir, filename) for filename in filelist]
-            media_utils.merge_audio_files(files, merge_title)
-        if arguments.upload:
-            upload_file(merge_title)
-
-    shutil.rmtree(tmpdir)
+    try:
+        download_vods(to_download, arguments, tmpdir, merge_title)
+    finally:
+        shutil.rmtree(tmpdir)
                             
 if __name__ == "__main__":
     arguments = init_args()

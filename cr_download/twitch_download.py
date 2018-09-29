@@ -8,12 +8,17 @@ Once again this code is super brittle.
 
 """
 
+import os
 import re
 import subprocess
 import shlex
 
 import requests
 import json
+
+import cr_settings
+
+CONFIG_FILENAME = ".streamlinkconfig"
 
 CLIENT_ID="ignduriqallck9hugiw15zfaqdvgwc"
 GANDS_ID="36619809"
@@ -50,6 +55,7 @@ def get_titles(video_list):
 def dload_ep_video(video, name):
     video_url = "twitch.tv/videos/" + video["_id"][1:]
 
-    cmd = "streamlink --config .streamlinkconfig {} 360p -f -o {}".format(
-        video_url, name)
+    config_file = os.path.join(cr_settings.CONFIG_DIR, CONFIG_FILENAME)
+    cmd = "streamlink --config {} {} 360p -f -o {}".format(
+        config_file, video_url, name)
     subprocess.call(shlex.split(cmd))
