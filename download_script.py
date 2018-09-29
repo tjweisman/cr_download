@@ -179,19 +179,27 @@ def main(arguments):
         filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
         twitch_download.dload_ep_video(vod, filename)
         if arguments.merge:
-            filelist += media_utils.mp4_to_audio(filename,
-                                                 change_ext(filename, ".wav"),
-                                                 segment = arguments.autocut,
-                                                 segment_fmt = ".wav")
-        else:
-            filelist = media_utils.mp4_to_audio(filename, ep_title,
-                                                segment = arguments.autocut,
-                                                segment_fmt = ".wav")
             if arguments.autocut:
+                filelist += media_utils.mp4_to_audio_segments(
+                    filename, tmpdir,
+                    segment_fmt = ".wav")
+            else:
+                mfile = os.path.join(
+                    tmpdir, media_utils.change_ext(filename, ".wav"))
+                filelist.append(media_utils.mp4_to_audio(filename, mfile))
+                
+        else:
+            if arguments.autocut:
+                filelist = media_utils.mp4_to_audio_segments(
+                    filename, ep_title,
+                    segment_fmt = ".wav")
                 autocut_files(tmpdir, filelist, ep_title)
+            else:
+                media_utils.mp4_to_audio(filename, ep_title)
                     
             if arguments.upload:
                 upload_file(ep_title)
+                
     if arguments.merge:
         if arguments.autocut:
             autocut_files(tmpdir, filelist, merge_title)

@@ -7,14 +7,14 @@ This is super brittle and does basically no error checking.
 
 """
 
-
 import httplib2, os
-import cr_settings
 
 from apiclient import discovery, errors
 from apiclient.http import MediaFileUpload
 from oauth2client.file import Storage
 from progressbar import ProgressBar
+
+import cr_settings
 
 
 XFER_FOLDER_NAME="xfer"

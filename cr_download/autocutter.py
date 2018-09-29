@@ -12,7 +12,8 @@ import essentia.standard as es
 import acoustid
 from tqdm import tqdm
 
-from .. import media_utils
+import media_utils
+import cr_settings
 from autocutter_utils import *
 
 CUT = 0
@@ -47,12 +48,12 @@ class SampleFingerprint:
         return len(self.fingerprint)
 
 
-
 #TODO: keep these stored so I'm not recomputing the chromaprints every time
 def load_sample_prints(mask = MASK, pickle_file = None):
     if pickle_file is not None:
+        pickle_fi = os.path.join(cr_settings.CONFIG_DIR, pickle_file)
         try:
-            with open(pickle_file, "r") as pfi:
+            with open(pickle_fi, "r") as pfi:
                 prints = pickle.load(pfi)
             return prints
         except IOError:
@@ -62,16 +63,18 @@ def load_sample_prints(mask = MASK, pickle_file = None):
     prints = {}
     mono_loader = es.MonoLoader()
     cp = es.Chromaprinter()
+    sample_dir = os.path.join(cr_settings.CONFIG_DIR, "break_sounds")
+    
     for key, filename in SAMPLE_FILES.iteritems():
-        mono_loader.configure(filename = os.path.join("break_sounds", filename))
+        mono_loader.configure(filename = os.path.join(sample_dir, filename))
         sample_audio_print = cp(mono_loader())
         fingerprints = acoustid.chromaprint.decode_fingerprint(
             sample_audio_print)[0]
         prints[key] = SampleFingerprint(fingerprints, mask)
 
     if pickle_file != None:
-        print("Writing fingerprints to {}...".format(pickle_file))
-        with open(pickle_file, "w") as pfi:
+        print("Writing fingerprints to {}...".format(pickle_fi))
+        with open(pickle_fi, "w") as pfi:
             pickle.dump(prints, pfi)
 
     return prints
@@ -222,5 +225,3 @@ def autocut_pattern(input_dir, input_pattern, output_file,
                     window_time = 10.0):
     audio_files = media_utils.file_list(input_dir, input_pattern)
     autocut(audio_files, output_file, window_time)
-
-    
