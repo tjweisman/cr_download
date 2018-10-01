@@ -19,6 +19,8 @@ from autocutter_utils import *
 CUT = 0
 KEEP = 1
 
+DEBUG = False
+
 MASK = 0xFF000000
 SAMPLE_RATE = 44100.0
 MAX_CHUNK_SIZE = 500
@@ -30,7 +32,13 @@ SAMPLE_FILES = {
     "dndbeyond" : "DD Beyond Official Theme.mp3"
 }
 
-CUTTING_PATTERN = [CUT, CUT, KEEP, CUT, KEEP, CUT, CUT, CUT, KEEP, CUT]
+CUTTING_PATTERN_NO_INTRO = (
+    [CUT, CUT, CUT, CUT, KEEP, CUT, CUT, CUT, KEEP, CUT]
+)
+CUTTING_PATTERN_INTRO = (
+    [CUT, CUT, KEEP, CUT, KEEP, CUT, CUT, CUT, KEEP, CUT]
+)
+
 BASE_SEQUENCE = ["overture", "intro", "dndbeyond", "overture", "overture"]
 
 class AutocutterException(Exception):
@@ -95,25 +103,27 @@ def window_error(window_print, sample_print, check_high_bits = True):
     
     return min(errs)
 
-def next_window(chunks, index, size):
-    chunk_size = len(chunks[0])
-    i = index / chunk_size
-    j = index % chunk_size
-
-    if i < chunk_size:
+def next_window(chunks, chunk_index, chunk_pt, size):
+    i = chunk_index
+    j = chunk_pt
+    if i < len(chunks):
         window = chunks[i][j:j + size]
+        j = j + size
         if len(window) < size and i + 1 < len(chunks):
             diff = size - len(window)
             window += chunks[1 + i][:diff]
+            i = i + 1
+            j = diff
         
-        return window
+        return (window, i, j)
     else:
         return None
     
 def fingerprint_transition_times(fingerprint_chunks, sample_prints,
                                  transition_sequence = BASE_SEQUENCE,
-                                 cutting_pattern = CUTTING_PATTERN,
-                                 threshold = 0.2, window_size = 40):
+                                 cutting_pattern =
+                                 CUTTING_PATTERN_INTRO, threshold =
+                                 0.2, window_size = 40):
 
     to_keep = []
     sequence = deque(transition_sequence)
@@ -122,13 +132,17 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
     transitioning = False
     state = pattern.popleft()
     interval_start = 0
+    chunk_index = 0
+    chunk_pt = 0
 
     total_length = sum([len(chunk) for chunk in fingerprint_chunks])
-    
+
     print("Finding transition times...")
     for i in tqdm(range(0, total_length, window_size)):
         
-        print_window = next_window(fingerprint_chunks, i, window_size)
+        print_window, chunk_index, chunk_pt = next_window(
+            fingerprint_chunks, chunk_index, chunk_pt, window_size
+        )
         error = window_error(print_window, sample_prints[expected_sample])
 
         if ((transitioning and error > threshold) or
@@ -168,10 +182,10 @@ def load_fingerprints(audio_files):
 
 
 
-def recut_files(input_files, transition_times):
+def recut_files(input_files, output_dir, transition_times):
     start_index = 0
     edited_files = []
-    for infile in tqdm(sorted(input_files.keys())):
+    for infile in tqdm(input_files):
         loader = es.AudioLoader(filename = infile)
         audio, sample_rate, channels, md5, bitrate, codec = loader()
         
@@ -183,9 +197,14 @@ def recut_files(input_files, transition_times):
         to_include = np.vstack([audio[s:e] for s,e in s_transitions])
         
         if len(to_include) > 0:
-            writer = es.AudioWriter(filename = input_files[infile])
+            outfile_base = media_utils.change_ext(
+                os.path.basename(infile),
+                ".wav")
+            outfile = os.path.join(output_dir, outfile_base)
+            
+            writer = es.AudioWriter(filename = outfile)
             writer(to_include)
-            edited_files.append(input_files[infile])
+            edited_files.append(outfile)
             
         start_index += len(audio)
         
@@ -193,36 +212,49 @@ def recut_files(input_files, transition_times):
 
 
 
-def autocut(audio_files, output_file, window_time = 10.0):
+def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
+            debug=False):
     sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
     
     fingerprints, total_length = load_fingerprints(audio_files)
     total_print_len = sum([len(chunk) for chunk in fingerprints])
 
-    fingerprint_len = total_length / total_print_len
+    fingerprint_len = float(total_length) / total_print_len
     fingerprint_window = int(window_time * SAMPLE_RATE / fingerprint_len)
 
-    fp_transitions = fingerprint_transition_times(fingerprints,
-                                                  sample_prints)
+    if keep_intro:
+        cutting_pattern = CUTTING_PATTERN_INTRO
+    else:
+        cutting_pattern = CUTTING_PATTERN_NO_INTRO
+        
+    fp_transitions = fingerprint_transition_times(
+        fingerprints, sample_prints,
+        window_size = fingerprint_window,
+        cutting_pattern = cutting_pattern
+    )
     
-    pcm_transitions = [(s * fingerprint_len,
-                        e * fingerprint_len) for s,e in fp_transitions]
+    pcm_transitions = [(int(s * fingerprint_len),
+                        int(e * fingerprint_len)) for s,e in fp_transitions]
 
     tmpdir = tempfile.mkdtemp()
 
     try:
-        repl_dict = {}
-        for infile in audio_files:
-            base = os.path.basename(infile)
-            tbase = media_utils.change_ext(base, ".wav")
-            repl_dict[infile] = os.path.join(tmpdir, tbase)
-
-        to_concat = recut_files(repl_dict, pcm_transitions)
+        to_concat = recut_files(audio_files, tmpdir, pcm_transitions)
         media_utils.merge_audio_files(to_concat, output_file)
     finally:
-        shutil.rmtree(tmpdir)
+        if (not DEBUG and not debug):
+            shutil.rmtree(tmpdir)
+        else:
+            print("Debug mode: autocutter preserving temporary directory "
+                  "{}".format(tmpdir))
 
 def autocut_pattern(input_dir, input_pattern, output_file,
                     window_time = 10.0):
     audio_files = media_utils.file_list(input_dir, input_pattern)
+    autocut(audio_files, output_file, window_time)
+
+def autocut_file(input_file, output_file, window_time = 10.0):
+    tmpdir = tempfile.mkdtemp()
+    base_files = media_utils.mp4_to_audio_segments(input_file, tmpdir, ".wav")
+    audio_files = [os.path.join(tmpdir, base) for base in base_files]
     autocut(audio_files, output_file, window_time)

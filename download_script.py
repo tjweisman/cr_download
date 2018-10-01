@@ -26,6 +26,8 @@ import shutil
 from cr_download import twitch_download, drive_upload
 from cr_download import media_utils
 
+DEBUG = False
+
 STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 
 DEFAULT_CR_REGEX = ".*Critical Role.*"
@@ -46,9 +48,17 @@ def init_args():
                         help=("automatically cut transitions/breaks "
                               "from episode"))
 
+    parser.add_argument("-d", "--debug", dest="debug", action="store_true",
+                        help="debug mode (keep temporary files)")
+
     parser.add_argument("-l", dest="limit", type=int, default=10,
                         help=("Set max number of VODs to retrieve "
                               "when searching for CR episodes (default: 10)"))
+
+    parser.add_arugment("-k", "--keep_intro", dest="keep_intro",
+                        action="store_true",
+                        help=("when autocutting, keep the pre-show"
+                              "announcements/intro section"))
     
     parser.add_argument("-u", "--upload", action="store_true",
                         help="Also upload .mp3s to Google Drive")
@@ -116,13 +126,13 @@ def ask_each_vod(vods, ask_title=True):
 
     return to_download
 
-def autocut_files(directory, filelist, output_file):
+def autocut_files(directory, filelist, output_file, keep_intro):
     from cr_download import autocutter
     
     filepaths = [os.path.join(directory, filename) for filename in filelist]
     try:
         print("Attempting to autocut files...")
-        autocutter.autocut(filepaths, output_file)
+        autocutter.autocut(filepaths, output_file, keep_intro = keep_intro)
     except autocutter.AutocutterException:
         print("Autocut failed. Merging uncut audio...")
         media_utils.merge_audio_files(filepaths, output_file)
@@ -153,7 +163,7 @@ def download_vods(to_download, arguments, tmpdir,
                 filelist = media_utils.mp4_to_audio_segments(
                     filename, ep_title,
                     segment_fmt = ".wav")
-                autocut_files(tmpdir, filelist, ep_title)
+                autocut_files(tmpdir, filelist, ep_title, arguments.keep_intro)
             else:
                 media_utils.mp4_to_audio_file(filename, ep_title)
                     
@@ -162,7 +172,7 @@ def download_vods(to_download, arguments, tmpdir,
                 
     if arguments.merge:
         if arguments.autocut:
-            autocut_files(tmpdir, filelist, merge_title)
+            autocut_files(tmpdir, filelist, merge_title, arguments.keep_intro)
         else:
             files = [os.path.join(tmpdir, filename) for filename in filelist]
             media_utils.merge_audio_files(files, merge_title)
@@ -214,8 +224,12 @@ def main(arguments):
     try:
         download_vods(to_download, arguments, tmpdir, merge_title)
     finally:
-        shutil.rmtree(tmpdir)
-                            
+        if (not DEBUG and not arguments.debug):
+            shutil.rmtree(tmpdir)
+        else:
+            print ("Debug mode: downloader script preserving temporary "
+                   "directory {}".format(tmpdir))
+            
 if __name__ == "__main__":
     arguments = init_args()
     main(arguments)
