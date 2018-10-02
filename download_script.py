@@ -203,6 +203,16 @@ def download_vods(to_download, arguments, tmpdir):
     return video_files
 
 def videos_to_audio(video_files, arguments, tmpdir):
+    """convert each video file in VIDEO_FILES to one or more audio files.
+
+    if arguments.autocut is specified (but not
+    arguments.autocut_merge), this will create one audio file for each
+    part of the video (determined by autocut). Otherwise one audio
+    file for each video is created.
+
+    return the name(s) of the audio file(s) created.
+
+    """
     outfiles = []
     for ep_title, filename in video_files:
         if arguments.autocut:
@@ -218,6 +228,16 @@ def videos_to_audio(video_files, arguments, tmpdir):
     return outfiles
     
 def videos_to_merged_audio(video_files, arguments, tmpdir, merge_title):
+    """convert all of the files in VIDEO_FILES to one or more audio files.
+
+    if arguments.autocut is specified (but not
+    arguments.autocut_merge), this will create one audio file for each
+    part of the episode (determined by autocut). Otherwise a single
+    audio file is created.
+
+    return the name(s) of the audio file(s) created.
+
+    """
     audio_files = []
     filelist = []
     for ep_title, filename in video_files:
@@ -255,11 +275,11 @@ def main(arguments):
 
     vods.sort(key = lambda vod: vod["recorded_at"])
     
-    print "%d vod(s) found."%len(vods)
+    print "{} vod(s) found.".format(len(vods))
     for i, vod in enumerate(vods):
-        print "%d. (%s) %s"%(i+1,
-                             timedelta(seconds=int(vod["length"])),
-                             vod["title"])
+        print "{}. ({}) {}".format(i+1,
+                                   timedelta(seconds=int(vod["length"])),
+                                   vod["title"])
 
     to_download = []
     
@@ -284,8 +304,8 @@ def main(arguments):
     tmpdir = tempfile.mkdtemp()
     try:
         print("Downloading {} vod(s)...".format(len(to_download)))
-        #video_files = download_vods(to_download, arguments, tmpdir)
-        video_files = TEST_DOWNLOADS
+        video_files = download_vods(to_download, arguments, tmpdir)
+        #video_files = TEST_DOWNLOADS
         print("Converting vod(s) to audio...")
         if arguments.merge:
             audio_files = videos_to_merged_audio(video_files,
