@@ -41,6 +41,8 @@ CUTTING_PATTERN_INTRO = (
 
 BASE_SEQUENCE = ["overture", "intro", "dndbeyond", "overture", "overture"]
 
+TEST_AUTOCUT_FILENAMES = []
+
 class AutocutterException(Exception):
     pass
 
@@ -270,11 +272,13 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
         if merge_segments:
             edited_files = recut_files(audio_files, tmpdir, pcm_transitions)
             media_utils.merge_audio_files(edited_files, output_file)
+            output_files = [output_file]
         else:
             edited_files = recut_files(audio_files, tmpdir, pcm_transitions,
-                                    split_pattern = output_file)
+                                       split_pattern = output_file)
             for output, contents in edited_files.iteritems():
                 media_utils.merge_audio_files(contents, output)
+            output_files = edited_files.keys()
             
     finally:
         if (not DEBUG and not debug):
@@ -282,12 +286,16 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
         else:
             print("Debug mode: autocutter preserving temporary directory "
                   "{}".format(tmpdir))
+            
+    return edited_files.keys()
 
 def autocut_pattern(input_dir, input_pattern, output_file,
                     window_time = 10.0):
     audio_files = media_utils.file_list(input_dir, input_pattern)
     autocut(audio_files, output_file, window_time)
 
+#TODO: this function needs to be rewritten (although it's convenience
+#only so this is low priority)
 def autocut_file(input_file, output_file, window_time = 10.0):
     tmpdir = tempfile.mkdtemp()
     base_files = media_utils.mp4_to_audio_segments(input_file, tmpdir, ".wav")

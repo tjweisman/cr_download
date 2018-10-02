@@ -27,11 +27,14 @@ from cr_download import twitch_download, drive_upload
 from cr_download.autocutter_utils import valid_pattern
 from cr_download import media_utils
 
-DEBUG = False
+DEBUG = True
 
 STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 
 DEFAULT_CR_REGEX = ".*Critical Role.*"
+
+TEST_DOWNLOADS = [("c2ep36a.mp3", "/tmp/tmpI5WDyE/crvid00.mp4"),
+                  ("c2ep36b.mp3", "/tmp/tmpI5WDyE/crvid01.mp4")]
 
 def confirm(prompt):
     confirm = "X"
@@ -94,7 +97,7 @@ def init_args():
     return parser.parse_args(sys.argv[1:])
 
 def guess_title(title, title_format=False):
-    #guess the episode number from the title via regex
+    """guess a CR episode number from the vod title via regex"""
     m = re.match(".*Critical Role:? (Campaign (\d+):?)? Ep(isode)? ?(\d+).*",
                  title, flags=re.I)
     wildcard = ""
@@ -104,7 +107,7 @@ def guess_title(title, title_format=False):
         campaign = "1"
         if m.group(2):
             campaign = m.group(2)
-            ep = m.group(4)
+            ep = int(m.group(4))
         return "c{0}ep{1:03d}{2}.mp3".format(campaign, ep, wildcard)
     
     return "tmp.mp3"
@@ -157,67 +160,86 @@ def ask_each_vod(vods, ask_title=True, title_format=False):
 
     return to_download
 
-def autocut_files(directory, filelist, output_file,
-                  keep_intro = True,
-                  merge_segments = False,
-                  debug = False):
+def try_autocut(filepaths, output,
+                keep_intro = True,
+                merge_segments = False,
+                debug = False):
+    """automatically edit a list of audio files
+
+    OUTPUT is either an audio file name or a substitutable pattern if
+    multiple audio files are to be created (i.e. when MERGE_SEGMENTS
+    is not specified).
+
+    """
     from cr_download import autocutter
-    
-    filepaths = [os.path.join(directory, filename) for filename in filelist]
     try:
         print("Attempting to autocut files...")
-        autocutter.autocut(filepaths, output_file, keep_intro = keep_intro,
-                           debug = debug, merge_segments=merge_segments)
+        outfiles = autocutter.autocut(filepaths, output,
+                                      keep_intro = keep_intro,
+                                      debug = debug,
+                                      merge_segments=merge_segments)
     except autocutter.AutocutterException:
-        print("Autocut failed. Merging uncut audio...")
-        media_utils.merge_audio_files(filepaths, output_file)
+        #TODO prompt user to see if they still want output if autocut fails
+        print("Merging uncut audio...")
+        outfiles = [media_utils.merge_audio_files(filepaths, output_file)]
+
+    return outfiles
 
 def upload_file(title):
         ostr = u"Uploading {} to 'xfer' folder in Google Drive..."
         print(ostr.format(title))
         drive_upload.single_xfer_upload(title)
 
-def download_vods(to_download, arguments, tmpdir,
-                  merge_title=None):
-    filelist = []
+def download_vods(to_download, arguments, tmpdir):
+    """Download video files for the vods specified in TO_DOWNLOAD.
+    
+    """
+    video_files = []
     for i, (vod, ep_title) in enumerate(to_download):
         filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
         twitch_download.dload_ep_video(vod, filename)
-        if arguments.merge:
-            if arguments.autocut:
-                filelist += media_utils.mp4_to_audio_segments(
-                    filename, tmpdir,
-                    segment_fmt = ".wav")
-            else:
-                mfile = os.path.join(
-                    tmpdir, media_utils.change_ext(filename, ".wav"))
-                filelist.append(media_utils.mp4_to_audio_file(filename, mfile))
-                
-        else:
-            if arguments.autocut:
-                filelist = media_utils.mp4_to_audio_segments(
-                    filename, ep_title,
-                    segment_fmt = ".wav")
-                autocut_files(tmpdir, filelist, ep_title,
-                              arguments.keep_intro,
-                              debug = debug
-                )
-            else:
-                media_utils.mp4_to_audio_file(filename, ep_title)
-                    
-            if arguments.upload:
-                upload_file(ep_title)
-                
-    if arguments.merge:
-        if arguments.autocut:
-            autocut_files(tmpdir, filelist, merge_title, arguments.keep_intro,
-                          debug = debug)
-        else:
-            files = [os.path.join(tmpdir, filename) for filename in filelist]
-            media_utils.merge_audio_files(files, merge_title)
-        if arguments.upload:
-            upload_file(merge_title)
+        video_files.append((ep_title, filename))
+        
+    return video_files
 
+def videos_to_audio(video_files, arguments, tmpdir):
+    outfiles = []
+    for ep_title, filename in video_files:
+        if arguments.autocut:
+            filelist = media_utils.mp4_to_audio_segments(
+                filename, tmpdir,
+                segment_fmt = ".wav")
+            outfiles += try_autocut(filelist, ep_title,
+                                    arguments.keep_intro,
+                                    arguments.autocut_merge)
+        else:
+            outfiles.append(media_utils.mp4_to_audio_file(filename, ep_title))
+
+    return outfiles
+    
+def videos_to_merged_audio(video_files, arguments, tmpdir, merge_title):
+    audio_files = []
+    filelist = []
+    for ep_title, filename in video_files:
+        if arguments.autocut:
+            filelist += media_utils.mp4_to_audio_segments(
+                filename, tmpdir,
+                segment_fmt = ".wav")
+        else:
+            mfile = os.path.join(
+                tmpdir, media_utils.change_ext(filename, ".wav"))
+            filelist.append(media_utils.mp4_to_audio_file(filename, mfile))
+
+            
+    if arguments.autocut:
+        outfiles = try_autocut(filelist, merge_title,
+                               arguments.keep_intro,
+                               arguments.autocut_merge)
+    else:
+        files = [os.path.join(tmpdir, filename) for filename in filelist]
+        outfiles = [media_utils.merge_audio_files(files, merge_title)]
+
+    return outfiles
         
 def main(arguments):
     debug = (DEBUG or arguments.debug)
@@ -259,20 +281,31 @@ def main(arguments):
     if arguments.merge and len(vods) > 0:
         merge_title = prompt_title(vods[0], title_format = autocut_split)
 
-    if arguments.upload:
-        print "Downloading/uploading %d vod(s)."%len(to_download)
-    else:
-        print "Downloading %d vod(s)"%len(to_download)
-    
     tmpdir = tempfile.mkdtemp()
     try:
-        download_vods(to_download, arguments, tmpdir, merge_title)
+        print("Downloading {} vod(s)...".format(len(to_download)))
+        #video_files = download_vods(to_download, arguments, tmpdir)
+        video_files = TEST_DOWNLOADS
+        print("Converting vod(s) to audio...")
+        if arguments.merge:
+            audio_files = videos_to_merged_audio(video_files,
+                                                 arguments, tmpdir,
+                                                 merge_title)
+        else:
+            audio_files = videos_to_audio(video_files, arguments, tmpdir)
     finally:
         if not debug:
             shutil.rmtree(tmpdir)
         else:
             print ("Debug mode: downloader script preserving temporary "
                    "directory {}".format(tmpdir))
+
+    if arguments.upload:
+        print("Uploading {} audio file(s)...".format(len(audio_files)))
+        for audio_file in audio_files:
+              upload_file(audio_file)
+
+    print("Done.")
             
 if __name__ == "__main__":
     arguments = init_args()

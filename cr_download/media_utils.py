@@ -32,6 +32,10 @@ def mp4_to_audio_segments(video_file, output_dir, segment_fmt):
                          "-segment_time", "1800", "-segment_list",
                          filelist.name, pattern])
         split_files = [filename.strip() for filename in filelist]
+        
+    split_files = [os.path.join(output_dir, filename)
+                   for filename in split_files]
+    
     return split_files
     
 def mp4_to_audio_file(video_file, output_file):
