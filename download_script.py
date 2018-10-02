@@ -27,14 +27,11 @@ from cr_download import twitch_download, drive_upload
 from cr_download.autocutter_utils import valid_pattern
 from cr_download import media_utils
 
-DEBUG = True
+DEBUG = False
 
 STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 
 DEFAULT_CR_REGEX = ".*Critical Role.*"
-
-TEST_DOWNLOADS = [("c2ep36a.mp3", "/tmp/tmpI5WDyE/crvid00.mp4"),
-                  ("c2ep36b.mp3", "/tmp/tmpI5WDyE/crvid01.mp4")]
 
 def confirm(prompt):
     confirm = "X"

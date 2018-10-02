@@ -41,12 +41,14 @@ CUTTING_PATTERN_INTRO = (
 
 BASE_SEQUENCE = ["overture", "intro", "dndbeyond", "overture", "overture"]
 
-TEST_AUTOCUT_FILENAMES = []
-
 class AutocutterException(Exception):
     pass
 
 class SampleFingerprint:
+    """class to store fingerprint data for one of the Critical Role
+    transition soundtracks
+
+    """
     def __init__(self, fingerprint, mask = MASK):
         self.fingerprint = fingerprint
         self.mask = mask
@@ -59,6 +61,21 @@ class SampleFingerprint:
 
 
 def load_sample_prints(mask = MASK, pickle_file = None):
+    """Load transition soundtrack fingerprint data from file(s).
+
+    If PICKLE_FILE is specified, this function tries to load
+    fingerprint data from a pickle file stored in the config
+    directory.
+
+    If that fails, it will load the actual .mp3 files for transition
+    soundtracks from the config directory, regenerate the fingerprint
+    data, and save it to the specified pickle file.
+
+    If no PICKLE_FILE is specified, just generate the fingerprint
+    data.
+
+    """
+    
     print("Loading sample fingerprint data...")
     if pickle_file is not None:
         pickle_fi = os.path.join(cr_settings.CONFIG_DIR, pickle_file)
@@ -90,6 +107,14 @@ def load_sample_prints(mask = MASK, pickle_file = None):
     return prints
 
 def window_error(window_print, sample_print, check_high_bits = True):
+    """find minimum pct bit error for a short fingerprint segment compared
+    to the fingerprint of a transition soundtrack.
+
+    we slide the window across the sample, computing percent bit
+    errors, and take the minimum. If CHECK_HIGH_BITS is specified, do
+    a first pass so we only check points where the high-order bits of
+    the sample/window agree. 
+    """
     offsets = range(len(sample_print) - len(window_print))
     if check_high_bits:
         masked_prints = set([prt & sample_print.mask for prt in window_print])
@@ -106,6 +131,9 @@ def window_error(window_print, sample_print, check_high_bits = True):
     return min(errs)
 
 def next_window(chunks, chunk_index, chunk_pt, size):
+    """get the next fixed-size window in an array of fingerprint arrays
+
+    """
     i = chunk_index
     j = chunk_pt
     if i < len(chunks):
@@ -126,7 +154,16 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
                                  cutting_pattern =
                                  CUTTING_PATTERN_INTRO, threshold =
                                  0.2, window_size = 40):
+    """identify indices in a fingerprint array where transition
+    soundtracks start/stop.
 
+    FINGERPRINT_CHUNKS is (effectively) concatenated and then cut into
+    windows, each of which is compared to the soundtracks in SAMPLE
+    PRINTS. We return an array of pairs marking the beginnings/ends of
+    segments of the array which lie between transition soundtracks
+    (and are marked to be kept by CUTTING_PATTERN).
+    """
+    
     to_keep = []
     sequence = deque(transition_sequence)
     pattern = deque(cutting_pattern)
@@ -167,6 +204,8 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
     return to_keep
 
 def load_fingerprints(audio_files):
+    """load an array of audio files and compute their chromaprints
+    """
     loader = es.MonoLoader()
     cp = es.Chromaprinter()
     total_len = 0
@@ -182,7 +221,23 @@ def load_fingerprints(audio_files):
 
     return (prints, total_len)
 
+def load_stereo_audio(audio_file):
+    loader = es.AudioLoader(filename = audio_file)
+    audio, sample_rate, channels, md5, bitrate, codec = loader()
+    return audio
+
+def audio_segments(audio, transitions, start_index):
+    clamped_transitions =  [(clamp(start - start_index, 0, len(audio)),
+                             clamp(end - start_index, 0, len(audio)))
+                            for start, end in transitions]
+    return [audio[s:e] for s,e in clamped_transitions]
+                           
+
 def write_recut_audio(audio, infile, output_dir):
+    """write audio data to a renamed version of INFILE located in
+    OUTPUT_DIR
+
+    """
     outfile_base = media_utils.change_ext(
         os.path.basename(infile),
         ".wav")
@@ -191,59 +246,73 @@ def write_recut_audio(audio, infile, output_dir):
     writer = es.AudioWriter(filename = outfile)
     writer(audio)
     return outfile
-            
 
-def recut_files(input_files, output_dir, transition_times,
-                split_pattern = None):
+def recut_files(input_files, output_dir, transition_times, pattern,
+                merge = False):
+    """Cut out unwanted portions of an array of audio files.
+
+    TRANSITION_TIMES marks the endpoints kept portions of the array as
+    sample indices.
+
+    PATTERN is either the name of the final output file or a pattern
+    containing a wildcard character (*), which will be substituted
+    with the index of each recut segment to obtain the names of the
+    output files.
+
+    return the names of the audio files created.
+
+    """
     start_index = 0
-    edited_files = []
 
-    if split_pattern and not valid_pattern(split_pattern):
-        raise Exception("improper split pattern: {}".format(split_pattern))
-    if split_pattern:
-        split_names = [
-            split_pattern.replace("*", str(i))
+    if not valid_pattern(pattern) and not merge:
+        raise Exception("improper split pattern: {}".format(pattern))
+    if merge:
+        names = [pattern]
+    else:
+        names = [
+            pattern.replace("*", str(i))
             for i, _ in enumerate(transition_times)
         ]
-        split_dirs = {name:os.path.join(output_dir, os.path.basename(name))
-                      for name in split_names}
         
-        for split_dir in split_dirs.values():
-            os.mkdir(split_dir)
+    oput_dirs = {name:os.path.join(output_dir, os.path.basename(name))
+                  for name in names}
+        
+    for oput_dir in oput_dirs.values():
+        os.mkdir(oput_dir)
             
-        edited_files = {name:[] for name in split_names}
+    edited_files = {name:[] for name in names}
     
     for infile in tqdm(input_files):
-        loader = es.AudioLoader(filename = infile)
-        audio, sample_rate, channels, md5, bitrate, codec = loader()
+        audio = load_stereo_audio(infile)
+        to_include = audio_segments(audio, transition_times, start_index)
         
-        s_transitions = [(clamp(start - start_index, 0, len(audio)),
-                          clamp(end - start_index, 0, len(audio)))
-                               for start, end in transition_times]
-        
-        to_include = [audio[s:e] for s,e in s_transitions]
-
-        if split_pattern:
-            for cut_audio, name in zip(to_include, split_names):
-                if len(cut_audio) > 0:
-                    outfile = write_recut_audio(cut_audio,
-                                                infile,
-                                                split_dirs[name])
-                    edited_files[name].append(outfile)
-        else:
-            merged_audio = np.vstack(to_include)
-            if len(to_include) > 0:
-                outfile = write_recut_audio(merged_audio,
+        if merge:
+            to_include = [np.vstack(to_include)]
+            
+        for cut_audio, name in zip(to_include, names):
+            if len(cut_audio) > 0:
+                outfile = write_recut_audio(cut_audio,
                                             infile,
-                                            output_dir)
-                edited_files.append(outfile)
+                                            oput_dirs[name])
+                edited_files[name].append(outfile)
         start_index += len(audio)
-        
-    return edited_files
+
+    for output, contents in edited_files.iteritems():
+        media_utils.merge_audio_files(contents, output)
+    return edited_files.keys()
 
 
 def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
             debug=False, merge_segments = False):
+    """automatically edit the array of audio files to exclude transitions
+    and specific segments between them.
+
+    if MERGE_SEGMENTS is specified, a single audio file is produced,
+    with undesired segments excluded. Otherwise, one audio file for
+    each desired segment is created.
+
+    returns the name(s) of the created file(s).
+    """
     sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
     
     fingerprints, total_length = load_fingerprints(audio_files)
@@ -267,37 +336,23 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
                         int(e * fingerprint_len)) for s,e in fp_transitions]
 
     tmpdir = tempfile.mkdtemp()
-
     try:
-        if merge_segments:
-            edited_files = recut_files(audio_files, tmpdir, pcm_transitions)
-            media_utils.merge_audio_files(edited_files, output_file)
-            output_files = [output_file]
-        else:
-            edited_files = recut_files(audio_files, tmpdir, pcm_transitions,
-                                       split_pattern = output_file)
-            for output, contents in edited_files.iteritems():
-                media_utils.merge_audio_files(contents, output)
-            output_files = edited_files.keys()
-            
+            output_files = recut_files(audio_files, tmpdir, pcm_transitions,
+                                       output_file, merge = merge_segments)
     finally:
         if (not DEBUG and not debug):
             shutil.rmtree(tmpdir)
         else:
             print("Debug mode: autocutter preserving temporary directory "
-                  "{}".format(tmpdir))
-            
-    return edited_files.keys()
+                  "{}".format(tmpdir))            
+    return output_files
 
-def autocut_pattern(input_dir, input_pattern, output_file,
-                    window_time = 10.0):
-    audio_files = media_utils.file_list(input_dir, input_pattern)
-    autocut(audio_files, output_file, window_time)
-
-#TODO: this function needs to be rewritten (although it's convenience
-#only so this is low priority)
 def autocut_file(input_file, output_file, window_time = 10.0):
     tmpdir = tempfile.mkdtemp()
-    base_files = media_utils.mp4_to_audio_segments(input_file, tmpdir, ".wav")
-    audio_files = [os.path.join(tmpdir, base) for base in base_files]
-    autocut(audio_files, output_file, window_time)
+    try:
+        file_segments = media_utils.mp4_to_audio_segments(
+            input_file, tmpdir, ".wav")
+        autocut(audio_files, output_file, window_time)
+    finally:
+        shutil.rmtree(tmpdir)
+        

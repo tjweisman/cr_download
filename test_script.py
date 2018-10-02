@@ -1,12 +1,9 @@
 import os
 import download_script
 
-vdir = "/tmp/tmpI5WDyE"
+TEST_DIR = "test_files"
 
-vfiles = sorted([vfi for vfi in os.listdir(vdir) if ".wav" in vfi])
+afiles = sorted([os.path.join(TEST_DIR, afi) for afi in os.listdir(TEST_DIR)
+                 if ".wav" in afi])
 
-
-#download_script.try_autocut()
-
-download_script.autocut_files(vdir, vfiles, "output_cut_part*.mp3",
-                              debug = True, merge_segments=False)
+download_script.try_autocut(afiles, "test_output.mp3", merge_segments=True)
