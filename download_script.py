@@ -2,16 +2,7 @@
 
 """cr_helper.py
 
-Main file for the Critical Role download helper
-
-This program checks recent Geek and Sundry Twitch VODs for videos with
-titles looking like Critical Role episode titles, and prompts the user
-to download each one. The file is downloaded as video using the
-"streamlink" program, and converted to .mp3 using ffmpeg. Then the
-script uploads each .mp3 file to the "xfer" folder in Google Drive.
-
-This is super brittle and not amazingly customizable, but at least I
-spent some time commenting my code.
+This file provides the CLI for the Critical Role download helper.
 
 """
 
@@ -23,7 +14,7 @@ import tempfile
 import os
 import shutil
 
-from cr_download import twitch_download, drive_upload
+from cr_download import twitch_download
 from cr_download.autocutter_utils import valid_pattern
 from cr_download import media_utils
 
@@ -183,9 +174,11 @@ def try_autocut(filepaths, output,
     return outfiles
 
 def upload_file(title):
-        ostr = u"Uploading {} to 'xfer' folder in Google Drive..."
-        print(ostr.format(title))
-        drive_upload.single_xfer_upload(title)
+    from cr_download import drive_upload
+    
+    ostr = u"Uploading {} to 'xfer' folder in Google Drive..."
+    print(ostr.format(title))
+    drive_upload.single_xfer_upload(title)
 
 def download_vods(to_download, arguments, tmpdir):
     """Download video files for the vods specified in TO_DOWNLOAD.
