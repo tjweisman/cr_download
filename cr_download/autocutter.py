@@ -1,11 +1,11 @@
 import os
-from itertools import chain
-from collections import deque
 import pickle
 import subprocess
 import re
 import tempfile
 import shutil
+from itertools import chain
+from collections import deque
 
 import numpy as np
 import essentia.standard as es
@@ -56,8 +56,8 @@ class SampleFingerprint:
         return len(self.fingerprint)
 
 
-#TODO: keep these stored so I'm not recomputing the chromaprints every time
 def load_sample_prints(mask = MASK, pickle_file = None):
+    print("Loading sample fingerprint data...")
     if pickle_file is not None:
         pickle_fi = os.path.join(cr_settings.CONFIG_DIR, pickle_file)
         try:
@@ -65,9 +65,9 @@ def load_sample_prints(mask = MASK, pickle_file = None):
                 prints = pickle.load(pfi)
             return prints
         except IOError:
-            print("Could not open samples from {}. ".format(pickle_file) +
-                  "Regenerating fingerprints...")
-            
+            print("Could not open samples from {}. ".format(pickle_file))
+
+    print("Generating fingerprints...")
     prints = {}
     mono_loader = es.MonoLoader()
     cp = es.Chromaprinter()
@@ -81,7 +81,7 @@ def load_sample_prints(mask = MASK, pickle_file = None):
         prints[key] = SampleFingerprint(fingerprints, mask)
 
     if pickle_file != None:
-        print("Writing fingerprints to {}...".format(pickle_fi))
+        print("Writing fingerprints to {}...".format(pfi))
         with open(pickle_fi, "w") as pfi:
             pickle.dump(prints, pfi)
 
@@ -180,11 +180,37 @@ def load_fingerprints(audio_files):
 
     return (prints, total_len)
 
+def write_recut_audio(audio, infile, output_dir):
+    outfile_base = media_utils.change_ext(
+        os.path.basename(infile),
+        ".wav")
+    outfile = os.path.join(output_dir, outfile_base)
+            
+    writer = es.AudioWriter(filename = outfile)
+    writer(audio)
+    return outfile
+            
 
-
-def recut_files(input_files, output_dir, transition_times):
+def recut_files(input_files, output_dir, transition_times,
+                split_pattern = None):
     start_index = 0
     edited_files = []
+
+    if split_pattern and not valid_pattern(split_pattern):
+        raise Exception("improper split pattern: {}".format(split_pattern))
+    if split_pattern:
+        split_names = [
+            split_pattern.replace("*", str(i))
+            for i, _ in enumerate(transition_times)
+        ]
+        split_dirs = {name:os.path.join(output_dir, os.path.basename(name))
+                      for name in split_names}
+        
+        for split_dir in split_dirs.values():
+            os.mkdir(split_dir)
+            
+        edited_files = {name:[] for name in split_names}
+    
     for infile in tqdm(input_files):
         loader = es.AudioLoader(filename = infile)
         audio, sample_rate, channels, md5, bitrate, codec = loader()
@@ -192,28 +218,30 @@ def recut_files(input_files, output_dir, transition_times):
         s_transitions = [(clamp(start - start_index, 0, len(audio)),
                           clamp(end - start_index, 0, len(audio)))
                                for start, end in transition_times]
+        
+        to_include = [audio[s:e] for s,e in s_transitions]
 
-        
-        to_include = np.vstack([audio[s:e] for s,e in s_transitions])
-        
-        if len(to_include) > 0:
-            outfile_base = media_utils.change_ext(
-                os.path.basename(infile),
-                ".wav")
-            outfile = os.path.join(output_dir, outfile_base)
-            
-            writer = es.AudioWriter(filename = outfile)
-            writer(to_include)
-            edited_files.append(outfile)
-            
+        if split_pattern:
+            for cut_audio, name in zip(to_include, split_names):
+                if len(cut_audio) > 0:
+                    outfile = write_recut_audio(cut_audio,
+                                                infile,
+                                                split_dirs[name])
+                    edited_files[name].append(outfile)
+        else:
+            merged_audio = np.vstack(to_include)
+            if len(to_include) > 0:
+                outfile = write_recut_audio(merged_audio,
+                                            infile,
+                                            output_dir)
+                edited_files.append(outfile)
         start_index += len(audio)
         
     return edited_files
 
 
-
 def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
-            debug=False):
+            debug=False, merge_segments = False):
     sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
     
     fingerprints, total_length = load_fingerprints(audio_files)
@@ -239,8 +267,15 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
     tmpdir = tempfile.mkdtemp()
 
     try:
-        to_concat = recut_files(audio_files, tmpdir, pcm_transitions)
-        media_utils.merge_audio_files(to_concat, output_file)
+        if merge_segments:
+            edited_files = recut_files(audio_files, tmpdir, pcm_transitions)
+            media_utils.merge_audio_files(edited_files, output_file)
+        else:
+            edited_files = recut_files(audio_files, tmpdir, pcm_transitions,
+                                    split_pattern = output_file)
+            for output, contents in edited_files.iteritems():
+                media_utils.merge_audio_files(contents, output)
+            
     finally:
         if (not DEBUG and not debug):
             shutil.rmtree(tmpdir)

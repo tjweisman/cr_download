@@ -22,3 +22,6 @@ def total_error(print1, print2):
 
 def clamp(val, mn, mx):
     return min(max(val, mn), mx)
+
+def valid_pattern(pattern):
+    return pattern.count("*") == 1
