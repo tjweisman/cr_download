@@ -24,16 +24,16 @@ For usage help, run `cr_download -h`.
 Dependencies:
 ==========================
 
-- streamlink[https://streamlink.github.io/]
+- [streamlink](https://streamlink.github.io/)
 
-- ffmpeg[https://www.ffmpeg.org/]
+- [ffmpeg](https://www.ffmpeg.org/)
 
-- requests[http://docs.python-requests.org/en/master/]
+- [requests](http://docs.python-requests.org/en/master/)
 
-- tqdm[https://pypi.org/project/tqdm/]
+- [tqdm](https://pypi.org/project/tqdm/)
 
-- acoustid[https://acoustid.org/chromaprint] and its
-  python bindings[https://pypi.org/project/pyacoustid/] (optional)
+- [acoustid](https://acoustid.org/chromaprint) and its
+  [python bindings](https://pypi.org/project/pyacoustid/) (optional)
   
-- Google API python client
-  [https://developers.google.com/api-client-library/python/] (optional)
+- [Google API python client](https://developers.google.com/api-client-library/python/)
+  (optional)
