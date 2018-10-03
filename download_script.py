@@ -295,7 +295,6 @@ def main(arguments):
     try:
         print("Downloading {} vod(s)...".format(len(to_download)))
         video_files = download_vods(to_download, arguments, tmpdir)
-        #video_files = TEST_DOWNLOADS
         print("Converting vod(s) to audio...")
         if arguments.merge:
             audio_files = videos_to_merged_audio(video_files,

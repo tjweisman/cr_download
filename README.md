@@ -1,3 +1,6 @@
+Overview
+=======================
+
 cr_download checks recent Geek and Sundry Twitch VODs for videos with
 titles looking like Critical Role episode titles, and prompts the user
 to download each one. The file is downloaded as video using the
@@ -16,10 +19,21 @@ episode to Google drive (mostly because my USB ports suck and I can't
 reliably transfer the audio to my phone over a wired connection, and
 Google Drive/WiFi is faster than Bluetooth).
 
-cr_download depends on:
+For usage help, run `cr_download -h`.
 
-- streamlink
-- the essentia and acoustid audio libraries (optional)
-- python bindings for the Google API (optional)
+Dependencies:
+==========================
 
-License? probably, since I relied on open-source code...
+- streamlink[https://streamlink.github.io/]
+
+- ffmpeg[https://www.ffmpeg.org/]
+
+- requests[http://docs.python-requests.org/en/master/]
+
+- tqdm[https://pypi.org/project/tqdm/]
+
+- acoustid[https://acoustid.org/chromaprint] and its
+  python bindings[https://pypi.org/project/pyacoustid/] (optional)
+  
+- Google API python client
+  [https://developers.google.com/api-client-library/python/] (optional)

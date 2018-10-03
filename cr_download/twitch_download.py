@@ -12,9 +12,9 @@ import os
 import re
 import subprocess
 import shlex
+import json
 
 import requests
-import json
 
 import cr_settings
 
