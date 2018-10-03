@@ -43,45 +43,46 @@ def init_args():
     parser.add_argument("-d", "--debug", dest="debug", action="store_true",
                         help="debug mode (keep temporary files)")
 
-    parser.add_argument("-l", dest="limit", type=int, default=10,
-                        help=("Set max number of VODs to retrieve "
-                              "when searching for CR episodes (default: 10)"))
+    parser.add_argument("-e", "--select", action="store_true",
+                        help="list all most recent VODs and select "
+                        "which one to download")
 
     parser.add_argument("-k", "--keep_intro", dest="keep_intro",
                         action="store_true",
                         help=("when autocutting, keep the pre-show"
                               "announcements/intro section"))
+
+    parser.add_argument("-l", dest="limit", type=int, default=10,
+                        help=("Set max number of VODs to retrieve "
+                              "when searching for CR episodes (default: 10)"))
+
+    parser.add_argument("-m", "--merge", action="store_true",
+                        help="merge all downloaded VODs into a single episode")
     
     parser.add_argument("-M", "--autocut-merge", action="store_true",
                         help=("when autocutting, merge the cut segments " 
                               "into a single file instead of cutting along "
                               "breaks"))
+
+    parser.add_argument("-n", action="store_const", dest="regex",
+                        const=None, help="don't filter vods at all "
+                        "when searching for CR videos")
+
+    parser.add_argument("-r", "--regex", default=DEFAULT_CR_REGEX,
+                        help = "what regex to use when filtering for "
+                        "CR vods")
     
     parser.add_argument("-u", "--upload", action="store_true",
                         help="Also upload .mp3s to Google Drive")
 
     parser.add_argument("-v", dest="verbose", action="store_true",
                         default=False, help="Show more details about vods")
-
-    parser.add_argument("-r", "--regex", default=DEFAULT_CR_REGEX,
-                        help = "what regex to use when filtering for "
-                        "CR vods")
-
-    parser.add_argument("-n", action="store_const", dest="regex",
-                        const=None, help="don't filter vods at all "
-                        "when searching for CR videos")
+    
 
     parser.add_argument("--strict", action="store_const", dest="regex",
                         const=DEFAULT_CR_REGEX, help = "use a stricter "
                         "regex to match possible CR vods")
 
-    parser.add_argument("-e", "--select", action="store_true",
-                        help="list all most recent VODs and select "
-                        "which one to download")
-
-    parser.add_argument("-m", "--merge", action="store_true",
-                        help="merge all downloaded VODs into a single episode")
-                        
     return parser.parse_args(sys.argv[1:])
 
 def guess_title(title, title_format=False):
