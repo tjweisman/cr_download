@@ -168,8 +168,8 @@ def try_autocut(filepaths, output,
                                       merge_segments=merge_segments)
     except autocutter.AutocutterException:
         #TODO prompt user to see if they still want output if autocut fails
-        print("Merging uncut audio...")
-        outfiles = [media_utils.merge_audio_files(filepaths, output_file)]
+        print("Autocutter failed. Merging uncut audio...")
+        outfiles = [media_utils.merge_audio_files(filepaths, output)]
 
     return outfiles
 

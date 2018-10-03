@@ -7,9 +7,9 @@ import shutil
 from itertools import chain
 from collections import deque
 
-import numpy as np
-import essentia.standard as es
 import acoustid
+import audioread
+import wave
 from tqdm import tqdm
 
 import media_utils
@@ -23,7 +23,6 @@ DEBUG = False
 
 MASK = 0xFF000000
 SAMPLE_RATE = 44100.0
-MAX_CHUNK_SIZE = 500
 
 SAMPLE_FINGERPRINT = "sample_fingerprints"
 SAMPLE_FILES = {
@@ -44,6 +43,9 @@ BASE_SEQUENCE = ["overture", "intro", "dndbeyond", "overture", "overture"]
 class AutocutterException(Exception):
     pass
 
+class AudioException(Exception):
+    pass
+
 class SampleFingerprint:
     """class to store fingerprint data for one of the Critical Role
     transition soundtracks
@@ -59,6 +61,18 @@ class SampleFingerprint:
     def __len__(self):
         return len(self.fingerprint)
 
+def fingerprint_full_file(filename):
+    """read an audio file and compute its full chromaprint
+    """
+    with audioread.audio_open(filename) as f:
+        data = {"duration":f.duration,
+                "samplerate":f.samplerate,
+                "channels":f.channels}
+        fp = acoustid.fingerprint(
+            f.samplerate, f.channels, iter(f), f.duration
+        )
+        fprint = acoustid.chromaprint.decode_fingerprint(fp)[0]
+    return fprint, data
 
 def load_sample_prints(mask = MASK, pickle_file = None):
     """Load transition soundtrack fingerprint data from file(s).
@@ -78,30 +92,33 @@ def load_sample_prints(mask = MASK, pickle_file = None):
     
     print("Loading sample fingerprint data...")
     if pickle_file is not None:
-        pickle_fi = os.path.join(cr_settings.CONFIG_DIR, pickle_file)
+        pickle_path = os.path.join(cr_settings.CONFIG_DIR, pickle_file)
         try:
-            with open(pickle_fi, "r") as pfi:
+            with open(pickle_path, "r") as pfi:
                 prints = pickle.load(pfi)
             return prints
         except IOError:
-            print("Could not open samples from {}. ".format(pickle_file))
+            print("Could not open samples from {}. ".format(pickle_path))
 
     print("Generating fingerprints...")
     prints = {}
-    mono_loader = es.MonoLoader()
-    cp = es.Chromaprinter()
     sample_dir = os.path.join(cr_settings.CONFIG_DIR, "break_sounds")
-    
+
+    tmpdir = tempfile.mkdtemp()
     for key, filename in SAMPLE_FILES.iteritems():
-        mono_loader.configure(filename = os.path.join(sample_dir, filename))
-        sample_audio_print = cp(mono_loader())
-        fingerprints = acoustid.chromaprint.decode_fingerprint(
-            sample_audio_print)[0]
+        wav_file = os.path.join(tmpdir,
+                                media_utils.change_ext(filename, ".wav"))
+        media_utils.mp4_to_audio_file(
+            os.path.join(sample_dir, filename), wav_file
+        )
+        fingerprints, _ = fingerprint_full_file(wav_file)
         prints[key] = SampleFingerprint(fingerprints, mask)
 
+    shutil.rmtree(tmpdir)
+
     if pickle_file != None:
-        print("Writing fingerprints to {}...".format(pfi))
-        with open(pickle_fi, "w") as pfi:
+        print("Writing fingerprints to {}...".format(pickle_path))
+        with open(pickle_path, "w") as pfi:
             pickle.dump(prints, pfi)
 
     return prints
@@ -206,46 +223,58 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
 def load_fingerprints(audio_files):
     """load an array of audio files and compute their chromaprints
     """
-    loader = es.MonoLoader()
-    cp = es.Chromaprinter()
-    total_len = 0
+    total_duration = 0.0
     prints = []
 
-    print("Loading audio files...")
+    samplerate = None
+    channels = None
+    print("Loading and fingerprinting audio files...")
     for filename in tqdm(audio_files):
-        loader.configure(filename = filename)
-        raw_audio = loader()
-        total_len += len(raw_audio)
-        prints.append(acoustid.chromaprint.decode_fingerprint(
-            cp(raw_audio))[0])
+        fingerprint, data = fingerprint_full_file(filename)
+        total_duration += data["duration"]
+        if ((channels is not None and data["channels"] != channels) or
+            (samplerate is not None and data["samplerate"] != samplerate)):
+            raise AudioException(
+                "Autocutter doesn't know how to handle input files "
+                "with different channelno or sample rate!"
+            )
+        else:
+            channels = data["channels"]
+            samplerate = data["samplerate"]
+        prints.append(fingerprint)
 
-    return (prints, total_len)
+    return (prints, total_duration, samplerate, channels)
 
-def load_stereo_audio(audio_file):
-    loader = es.AudioLoader(filename = audio_file)
-    audio, sample_rate, channels, md5, bitrate, codec = loader()
-    return audio
 
-def audio_segments(audio, transitions, start_index):
-    clamped_transitions =  [(clamp(start - start_index, 0, len(audio)),
-                             clamp(end - start_index, 0, len(audio)))
-                            for start, end in transitions]
-    return [audio[s:e] for s,e in clamped_transitions]
-                           
+def write_transitions(input_file, outfile_name, transitions, start_index):
+    """write the segments of the wav file in INPUT specified in
+    TRANSITIONS to a new wav file.
 
-def write_recut_audio(audio, infile, output_dir):
-    """write audio data to a renamed version of INFILE located in
-    OUTPUT_DIR
+    START_INDEX specifies the offset to use for the transitions.
 
     """
-    outfile_base = media_utils.change_ext(
-        os.path.basename(infile),
-        ".wav")
-    outfile = os.path.join(output_dir, outfile_base)
-            
-    writer = es.AudioWriter(filename = outfile)
-    writer(audio)
-    return outfile
+    total_written = 0
+
+    n = input_file.getnframes()
+    current = input_file.tell()
+    clamped_transitions =  [
+        (clamp(start - start_index, 0, n), 
+         clamp(end - start_index, 0, n))
+        for start, end in transitions
+    ]
+
+    output_file = wave.open(outfile_name, "w")
+    output_file.setparams(input_file.getparams())
+    
+    for start, end in clamped_transitions:
+        input_file.readframes(start - current)
+        output_file.writeframes(input_file.readframes(end - start))
+        total_written += end - start
+        current = end
+
+    output_file.close()
+
+    return total_written
 
 def recut_files(input_files, output_dir, transition_times, pattern,
                 merge = False):
@@ -266,41 +295,42 @@ def recut_files(input_files, output_dir, transition_times, pattern,
 
     if not valid_pattern(pattern) and not merge:
         raise Exception("improper split pattern: {}".format(pattern))
+    
     if merge:
-        names = [pattern]
+        names = [(pattern, transition_times)]
     else:
         names = [
-            pattern.replace("*", str(i))
-            for i, _ in enumerate(transition_times)
+            (pattern.replace("*", str(i)), [endpts])
+            for i, endpts in enumerate(transition_times)
         ]
         
     oput_dirs = {name:os.path.join(output_dir, os.path.basename(name))
-                  for name in names}
+                  for name, _ in names}
         
     for oput_dir in oput_dirs.values():
         os.mkdir(oput_dir)
             
-    edited_files = {name:[] for name in names}
-    
+    edited_files = {name:[] for name, _ in names}
     for infile in tqdm(input_files):
-        audio = load_stereo_audio(infile)
-        to_include = audio_segments(audio, transition_times, start_index)
-        
-        if merge:
-            to_include = [np.vstack(to_include)]
+        outfile_basename = media_utils.change_ext(
+            os.path.basename(infile),
+            ".wav"
+        )
+        input_audio = wave.open(infile, "r")
+        for name, transitions in names:
             
-        for cut_audio, name in zip(to_include, names):
-            if len(cut_audio) > 0:
-                outfile = write_recut_audio(cut_audio,
-                                            infile,
-                                            oput_dirs[name])
-                edited_files[name].append(outfile)
-        start_index += len(audio)
-
+            outfile_name = os.path.join(oput_dirs[name], outfile_basename)
+            frames = write_transitions(input_audio, outfile_name,
+                                       transitions, start_index)
+            
+            if frames > 0:
+                edited_files[name].append(outfile_name)
+        start_index += input_audio.getnframes()
+        input_audio.close()
+        
     for output, contents in edited_files.iteritems():
         media_utils.merge_audio_files(contents, output)
     return edited_files.keys()
-
 
 def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
             debug=False, merge_segments = False):
@@ -314,12 +344,15 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
     returns the name(s) of the created file(s).
     """
     sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
-    
-    fingerprints, total_length = load_fingerprints(audio_files)
-    total_print_len = sum([len(chunk) for chunk in fingerprints])
 
-    fingerprint_len = float(total_length) / total_print_len
-    fingerprint_window = int(window_time * SAMPLE_RATE / fingerprint_len)
+    (fingerprints, total_duration,
+     samplerate, channels) = load_fingerprints(audio_files)
+
+    total_print_len = sum([len(chunk) for chunk in fingerprints])
+    
+    fingerprint_rate = total_print_len / total_duration
+    fingerprint_window = int(window_time * fingerprint_rate)
+    
 
     if keep_intro:
         cutting_pattern = CUTTING_PATTERN_INTRO
@@ -331,9 +364,10 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
         window_size = fingerprint_window,
         cutting_pattern = cutting_pattern
     )
-    
-    pcm_transitions = [(int(s * fingerprint_len),
-                        int(e * fingerprint_len)) for s,e in fp_transitions]
+
+    pcm_transitions = [(int(samplerate * s / fingerprint_rate),
+                        int(samplerate * e / fingerprint_rate))
+                       for s,e in fp_transitions]
 
     tmpdir = tempfile.mkdtemp()
     try:
@@ -347,7 +381,39 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
                   "{}".format(tmpdir))            
     return output_files
 
+def get_autocut_errors(audio_files, window_time = 10.0):
+    """get an array of the minimum bit diffs found in the fingerprint
+    array for AUDIO_FILES and the sample transition arrays
+
+    """
+    sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
+    
+    (fingerprints, total_duration,
+     samplerate, channels) = load_fingerprints(audio_files)
+    
+    total_len = sum([len(chunk) for chunk in fingerprints])
+
+    fingerprint_rate = total_len / total_duration
+    window_size = int(window_time * fingerprint_rate)
+
+    chunk_index = 0
+    chunk_pt = 0
+
+    errors = []
+    for i in tqdm(range(0, total_len, window_size)):
+        print_window, chunk_index, chunk_pt = next_window(
+            fingerprints, chunk_index, chunk_pt, window_size
+        )
+        error = min([window_error(print_window, spr)
+                        for spr in sample_prints.values()])
+        errors.append(error)
+
+    return errors
+
 def autocut_file(input_file, output_file, window_time = 10.0):
+    """helper function (not used) to autocut a single audio file
+
+    """
     tmpdir = tempfile.mkdtemp()
     try:
         file_segments = media_utils.mp4_to_audio_segments(
