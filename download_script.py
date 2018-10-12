@@ -87,7 +87,7 @@ def init_args():
 
 def guess_title(title, title_format=False):
     """guess a CR episode number from the vod title via regex"""
-    m = re.match(".*Critical Role:? (Campaign (\d+):?)? Ep(isode)? ?(\d+).*",
+    m = re.match(".*Critical Role:? (Campaign (\d+):?)?,? Ep(isode)? ?(\d+).*",
                  title, flags=re.I)
     wildcard = ""
     if title_format:
@@ -108,22 +108,24 @@ def prompt_title(vod, title_format=False):
     """
     ep_title = guess_title(vod["title"], title_format)
     if title_format:
-        valid_title = False
-        while not valid_title:
-            prompt_str = (
-                "Enter titles to save vod segments under (default: {})".format(
-                    ep_title))
-            valid_title = valid_pattern(ep_title)
-            if not valid_title:
-                print("Enter a title pattern containing exactly one '*'.")
+        prompt_str = (
+            "Enter titles to save vod segments under (default: {})".format(
+                ep_title))
     else:
         prompt_str = (
             "Enter title to save vod under (default: {}): ".format(
                 ep_title))
-        
-    title = raw_input(prompt_str)
-    if len(title.strip()) == 0:
-        title = ep_title
+
+    invalid_title = True
+    while invalid_title:
+        title = raw_input(prompt_str)
+        if len(title.strip()) == 0:
+            title = ep_title
+        invalid_title = title_format and not valid_pattern(title)
+        if invalid_title:
+            print("Enter a title pattern containing exactly one '*'.")
+            
+    
         
     return title
 
