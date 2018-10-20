@@ -14,6 +14,7 @@ import tempfile
 import os
 import shutil
 
+from cr_download import autocutter
 from cr_download import twitch_download
 from cr_download.autocutter_utils import valid_pattern
 from cr_download import media_utils
@@ -24,14 +25,6 @@ STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 
 DEFAULT_CR_REGEX = ".*Critical Role.*"
 
-def confirm(prompt):
-    confirm = "X"
-    while confirm.strip().upper() not in ["Y", "N", ""]:
-        confirm = raw_input(prompt + " [Y]/N ")
-        if confirm.strip().upper() in ["Y", ""]:
-            return True
-    return False
-
 def init_args():
     parser = ArgumentParser(description="Download .mp3 files for Critical "
                             "Role episodes from Twitch")
@@ -39,6 +32,10 @@ def init_args():
     parser.add_argument("-a", dest="autocut", action="store_true",
                         help="""automatically cut transitions/
                         breaks from episode""")
+
+    parser.add_argument("-c", dest="cleanup", action="store_true",
+                        help="""keep downloaded video files in a temporary 
+                        directory to be deleted after running""")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true",
                         help="debug mode (keep temporary files)")
@@ -96,10 +93,22 @@ def guess_title(title, title_format=False):
         campaign = "1"
         if m.group(2):
             campaign = m.group(2)
-            ep = int(m.group(4))
+        ep = int(m.group(4))
         return "c{0}ep{1:03d}{2}.mp3".format(campaign, ep, wildcard)
-    
-    return "tmp.mp3"
+
+    if title_format:
+        return "tmp_part*.mp3"
+    else:
+        return "tmp.mp3"
+
+def confirm(prompt):
+    confirm = "X"
+    while confirm.strip().upper() not in ["Y", "N", ""]:
+        confirm = raw_input(prompt + " [Y]/N ")
+        if confirm.strip().upper() in ["Y", ""]:
+            return True
+    return False
+
 
 def prompt_title(vod, title_format=False):
     """Ask the user to provide a title (or title pattern) for a vod.
@@ -162,7 +171,6 @@ def try_autocut(filepaths, output,
     is not specified).
 
     """
-    from cr_download import autocutter
     try:
         print("Attempting to autocut files...")
         outfiles = autocutter.autocut(filepaths, output,
@@ -183,13 +191,13 @@ def upload_file(title):
     print(ostr.format(title))
     drive_upload.single_xfer_upload(title)
 
-def download_vods(to_download, arguments, tmpdir):
+def download_vods(to_download, arguments, dst_dir):
     """Download video files for the vods specified in TO_DOWNLOAD.
     
     """
     video_files = []
     for i, (vod, ep_title) in enumerate(to_download):
-        filename = os.path.join(tmpdir, "crvid{:02}.mp4".format(i))
+        filename = os.path.join(dst_dir, "crvid{:02}.mp4".format(i))
         twitch_download.dload_ep_video(vod, filename)
         video_files.append((ep_title, filename))
         
@@ -295,9 +303,13 @@ def main(arguments):
         merge_title = prompt_title(vods[0], title_format = autocut_split)
 
     tmpdir = tempfile.mkdtemp()
+    if arguments.cleanup:
+        vod_dir = tmpdir
+    else:
+        vod_dir = "."
     try:
         print("Downloading {} vod(s)...".format(len(to_download)))
-        video_files = download_vods(to_download, arguments, tmpdir)
+        video_files = download_vods(to_download, arguments, vod_dir)
         print("Converting vod(s) to audio...")
         if arguments.merge:
             audio_files = videos_to_merged_audio(video_files,
