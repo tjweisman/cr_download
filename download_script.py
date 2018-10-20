@@ -222,7 +222,8 @@ def videos_to_audio(video_files, arguments, tmpdir):
                 segment_fmt = ".wav")
             outfiles += try_autocut(filelist, ep_title,
                                     arguments.keep_intro,
-                                    arguments.autocut_merge)
+                                    arguments.autocut_merge,
+                                    debug = arguments.debug)
         else:
             outfiles.append(media_utils.mp4_to_audio_file(filename, ep_title))
 

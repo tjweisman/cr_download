@@ -53,10 +53,11 @@ def main(arguments):
     title = prompt_title(vod, arguments.autocut)
     tmpdir = tempfile.mkdtemp()
     try:
-        audio_files = videos_to_merged_audio(arguments.filenames,
+        filenames = [(None, name) for name in arguments.filenames]
+        audio_files = videos_to_merged_audio(filenames,
                                              arguments,
                                              tmpdir,
-                                             merge_title)
+                                             title)
     finally:
         if not arguments.debug:
             shutil.rmtree(tmpdir)

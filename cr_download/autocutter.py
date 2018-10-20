@@ -169,8 +169,9 @@ def next_window(chunks, chunk_index, chunk_pt, size):
 def fingerprint_transition_times(fingerprint_chunks, sample_prints,
                                  transition_sequence = BASE_SEQUENCE,
                                  cutting_pattern =
-                                 CUTTING_PATTERN_INTRO, threshold =
-                                 0.2, window_size = 40):
+                                 CUTTING_PATTERN_INTRO,
+                                 error_threshold = 0.22, time_threshold
+                                 = 2, window_size = 40):
     """identify indices in a fingerprint array where transition
     soundtracks start/stop.
 
@@ -190,6 +191,9 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
     interval_start = 0
     chunk_index = 0
     chunk_pt = 0
+    
+    ashift_frame_ct = 0
+    ashift_frame_start = 0
 
     total_length = sum([len(chunk) for chunk in fingerprint_chunks])
 
@@ -201,19 +205,28 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
         )
         error = window_error(print_window, sample_prints[expected_sample])
 
-        if ((transitioning and error > threshold) or
-            ((not transitioning) and (error < threshold))):
+        
+        if ((transitioning and error > error_threshold) or
+            ((not transitioning) and (error < error_threshold))):
+            if ashift_frame_ct == 0:
+                ashift_frame_start = i
+            ashift_frame_ct += 1
+        else:
+            ashift_frame_ct = 0
+
+        if ashift_frame_ct >= time_threshold:
             if state == KEEP:
-                to_keep.append((interval_start, i))
+                to_keep.append((interval_start, ashift_frame_start))
 
             if len(pattern) == 0 or len(sequence) == 0:
                 return to_keep
 
             state = pattern.popleft()
             if state == KEEP:
-                interval_start = i
+                interval_start = ashift_frame_start
 
             transitioning = not transitioning
+            ashift_frame_ct = 0
             if not transitioning:
                 expected_sample = sequence.popleft()
     if len(pattern) > 0 or len(sequence) > 0:
@@ -410,15 +423,16 @@ def get_autocut_errors(audio_files, window_time = 10.0):
 
     return errors
 
-def autocut_file(input_file, output_file, window_time = 10.0):
+def autocut_file(input_file, output_file, window_time = 10.0,
+                 debug = False):
     """helper function (not used) to autocut a single audio file
 
     """
     tmpdir = tempfile.mkdtemp()
     try:
-        file_segments = media_utils.mp4_to_audio_segments(
+        audio_files = media_utils.mp4_to_audio_segments(
             input_file, tmpdir, ".wav")
         autocut(audio_files, output_file, window_time)
     finally:
-        shutil.rmtree(tmpdir)
-        
+        if not debug and not DEBUG:
+            shutil.rmtree(tmpdir)
