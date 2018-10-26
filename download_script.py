@@ -279,7 +279,7 @@ def main(arguments):
     
     print "{} vod(s) found.".format(len(vods))
     for i, vod in enumerate(vods):
-        print "{}. ({}) {}".format(i+1,
+        print u"{}. ({}) {}".format(i+1,
                                    timedelta(seconds=int(vod["length"])),
                                    vod["title"])
 
