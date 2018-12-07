@@ -40,10 +40,19 @@ def init_args():
                         dest="autocut", help="""Don't autocut, just
                         convert to a single unedited audio file""")
 
-    parser.add_argument("-k", "--keep_intro", dest="keep_intro",
-                        action="store_true",
-                        help=("when autocutting, keep the pre-show"
-                              "announcements/intro section"))
+    parser.add_argument("--cutting-sequence", default="default",
+                        help="""which cutting sequence to use when autocutting
+                        files (default behavior specified in config file)""")
+
+    parser.add_argument("-k", "--keep-intro", action="store_const",
+                        dest="cutting_sequence", const="keep",
+                        help="""when autocutting, keep the pre-show
+                        announcements/intro section""")
+
+    parser.add_argument("-c", "--cut-intro", action="store_const",
+                        dest="cutting_sequence", const="cut",
+                        help="""when autocutting, cut the pre-show
+                        announcements/intro section""")
 
     return parser.parse_args(sys.argv[1:])
     

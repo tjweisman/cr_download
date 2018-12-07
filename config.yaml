@@ -18,4 +18,4 @@ sample_data_file: sample_fingerprints
 
 
 default_audio_sequence: campaign_2_original
-default_cutting_pattern: cut_intro
+default_cutting_sequence: cut_intro

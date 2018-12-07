@@ -7,7 +7,6 @@ import media_utils
 import cr_settings
 import autocutter_utils
 
-#TODO: offload this into a config file
 MASK = 0xFF000000
 
 class SampleFingerprint:

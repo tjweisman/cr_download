@@ -26,7 +26,6 @@ class AutocutterException(Exception):
 class AudioException(Exception):
     pass
 
-
 def window_error(window_print, sample_print, check_high_bits = True):
     """find minimum pct bit error for a short fingerprint segment compared
     to the fingerprint of a transition soundtrack.
@@ -95,7 +94,7 @@ def fingerprint_transition_times(
 
     if cutting_pattern == None:
         cutting_pattern = cr_settings.DATA["cutting_sequences"][
-            cr_settings.DATA["default_cutting_pattern"]
+            cr_settings.DATA["default_cutting_sequence"]
         ]
     
     to_keep = []
@@ -261,8 +260,9 @@ def recut_files(input_files, output_dir, transition_times, pattern,
         media_utils.merge_audio_files(contents, output)
     return edited_files.keys()
 
-def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
-            debug=False, merge_segments = False):
+def autocut(audio_files, output_file, window_time = 10.0,
+            cutting_sequence = "default", debug=False,
+            merge_segments = False):
     """automatically edit the array of audio files to exclude transitions
     and specific segments between them.
 
@@ -285,11 +285,10 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
     fingerprint_window = int(window_time * fingerprint_rate)
     
 
-    if keep_intro:
-        cutting_pattern = cr_settings.DATA["cutting_sequences"]["keep_intro"]
-    else:
-        cutting_pattern = cr_settings.DATA["cutting_sequences"]["cut_intro"]
-        
+    cutting_pattern = cr_settings.DATA["cutting_sequences"].get(
+        cutting_sequence
+    )
+    
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, cutting_pattern,
         window_size = fingerprint_window

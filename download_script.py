@@ -44,9 +44,18 @@ def init_args():
                         help="list all most recent VODs and select "
                         "which one to download")
 
-    parser.add_argument("-k", "--keep_intro", dest="keep_intro",
-                        action="store_true",
+    parser.add_argument("--cutting-sequence", default="default",
+                        help="""which cutting sequence to use when autocutting
+                        files (default behavior specified in config file)""")
+
+    parser.add_argument("-k", "--keep-intro", action="store_const",
+                        dest="cutting_sequence", const="keep",
                         help=("when autocutting, keep the pre-show"
+                              "announcements/intro section"))
+
+    parser.add_argument("-c", "--cut-intro", action="store_const",
+                        dest="cutting_sequence", const="cut",
+                        help=("when autocutting, cut the pre-show"
                               "announcements/intro section"))
 
     parser.add_argument("-l", dest="limit", type=int, default=10,
@@ -161,7 +170,7 @@ def ask_each_vod(vods, ask_title=True, title_format=False):
     return to_download
 
 def try_autocut(filepaths, output,
-                keep_intro = True,
+                cutting_sequence = "default",
                 merge_segments = False,
                 debug = False):
     """automatically edit a list of audio files
@@ -174,7 +183,7 @@ def try_autocut(filepaths, output,
     try:
         print("Attempting to autocut files...")
         outfiles = autocutter.autocut(filepaths, output,
-                                      keep_intro = keep_intro,
+                                      cutting_sequence = cutting_sequence,
                                       debug = debug,
                                       merge_segments=merge_segments)
     except autocutter.AutocutterException:
@@ -221,7 +230,7 @@ def videos_to_audio(video_files, arguments, tmpdir):
                 filename, tmpdir,
                 segment_fmt = ".wav")
             outfiles += try_autocut(filelist, ep_title,
-                                    arguments.keep_intro,
+                                    arguments.cutting_sequence,
                                     arguments.autocut_merge,
                                     debug = arguments.debug)
         else:
@@ -255,7 +264,7 @@ def videos_to_merged_audio(video_files, arguments, tmpdir, merge_title):
             
     if arguments.autocut:
         outfiles = try_autocut(filelist, merge_title,
-                               arguments.keep_intro,
+                               arguments.cutting_sequence,
                                arguments.autocut_merge)
     else:
         files = [os.path.join(tmpdir, filename) for filename in filelist]
