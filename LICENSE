@@ -33,6 +33,7 @@ acoustid - MIT License
 pyacoustid - MIT License
 requests - Apache License 2.0
 tqdm - MIT License
+PyYAML - MIT License
 
 ffmpeg - LGPLv2.1+
 streamlink - BSD license

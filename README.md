@@ -32,6 +32,8 @@ Dependencies:
 
 - [tqdm](https://pypi.org/project/tqdm/)
 
+- [PyYAML](https://pyyaml.org/)
+
 - [acoustid](https://acoustid.org/chromaprint) and its
   [python bindings](https://pypi.org/project/pyacoustid/) (optional)
   
