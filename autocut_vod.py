@@ -49,7 +49,7 @@ def init_args():
                         help="""when autocutting, keep the pre-show
                         announcements/intro section""")
 
-    parser.add_argument("-c", "--cut-intro", action="store_const",
+    parser.add_argument("--cut-intro", action="store_const",
                         dest="cutting_sequence", const="cut",
                         help="""when autocutting, cut the pre-show
                         announcements/intro section""")
