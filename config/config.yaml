@@ -1,7 +1,7 @@
 sample_audio_files:
   overture : overture.mp3
   c2_intro_1 : Critical Role Campaign 2 Intro.mp3
-  c2_intro_2 : Critical Role Campaign 2 Intro.mp3
+  c2_intro_2 : Critical Role - Mighty Nein Intro.mp3
   dndbeyond : DD Beyond Official Theme.mp3
 
 audio_sequences: 
@@ -17,5 +17,5 @@ cutting_sequences:
 sample_data_file: sample_fingerprints
 
 
-default_audio_sequence: campaign_2_original
+default_audio_sequence: campaign_2_newtheme
 default_cutting_sequence: cut_intro
