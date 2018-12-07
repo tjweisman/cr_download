@@ -1,5 +1,4 @@
 import os
-import pickle
 import subprocess
 import re
 import tempfile
@@ -7,38 +6,19 @@ import shutil
 from itertools import chain
 from collections import deque
 
-import acoustid
-import audioread
 import wave
 from tqdm import tqdm
 
 import media_utils
 import cr_settings
-from autocutter_utils import *
 
-CUT = 0
-KEEP = 1
+import autocutter_utils
+import sample_fingerprint
+
+CUT = "C"
+KEEP = "K"
 
 DEBUG = False
-
-MASK = 0xFF000000
-SAMPLE_RATE = 44100.0
-
-SAMPLE_FINGERPRINT = "sample_fingerprints"
-SAMPLE_FILES = {
-    "overture" : "overture.mp3",
-    "intro" : "Critical Role Campaign 2 Intro.mp3",
-    "dndbeyond" : "DD Beyond Official Theme.mp3"
-}
-
-CUTTING_PATTERN_NO_INTRO = (
-    [CUT, CUT, CUT, CUT, KEEP, CUT, CUT, CUT, KEEP, CUT]
-)
-CUTTING_PATTERN_INTRO = (
-    [CUT, CUT, KEEP, CUT, KEEP, CUT, CUT, CUT, KEEP, CUT]
-)
-
-BASE_SEQUENCE = ["overture", "intro", "dndbeyond", "overture", "overture"]
 
 class AutocutterException(Exception):
     pass
@@ -46,82 +26,6 @@ class AutocutterException(Exception):
 class AudioException(Exception):
     pass
 
-class SampleFingerprint:
-    """class to store fingerprint data for one of the Critical Role
-    transition soundtracks
-
-    """
-    def __init__(self, fingerprint, mask = MASK):
-        self.fingerprint = fingerprint
-        self.mask = mask
-        masked_prints = [fprint & mask for fprint in fingerprint]
-        self.masked_prints_i = invert(masked_prints)
-        self.masked_prints_s = set(masked_prints)
-
-    def __len__(self):
-        return len(self.fingerprint)
-
-def fingerprint_full_file(filename):
-    """read an audio file and compute its full chromaprint
-    """
-    with audioread.audio_open(filename) as f:
-        data = {"duration":f.duration,
-                "samplerate":f.samplerate,
-                "channels":f.channels}
-        fp = acoustid.fingerprint(
-            f.samplerate, f.channels, iter(f), f.duration
-        )
-        fprint = acoustid.chromaprint.decode_fingerprint(fp)[0]
-    return fprint, data
-
-def load_sample_prints(mask = MASK, pickle_file = None):
-    """Load transition soundtrack fingerprint data from file(s).
-
-    If PICKLE_FILE is specified, this function tries to load
-    fingerprint data from a pickle file stored in the config
-    directory.
-
-    If that fails, it will load the actual .mp3 files for transition
-    soundtracks from the config directory, regenerate the fingerprint
-    data, and save it to the specified pickle file.
-
-    If no PICKLE_FILE is specified, just generate the fingerprint
-    data.
-
-    """
-    
-    print("Loading sample fingerprint data...")
-    if pickle_file is not None:
-        pickle_path = os.path.join(cr_settings.CONFIG_DIR, pickle_file)
-        try:
-            with open(pickle_path, "r") as pfi:
-                prints = pickle.load(pfi)
-            return prints
-        except IOError:
-            print("Could not open samples from {}. ".format(pickle_path))
-
-    print("Generating fingerprints...")
-    prints = {}
-    sample_dir = os.path.join(cr_settings.CONFIG_DIR, "break_sounds")
-
-    tmpdir = tempfile.mkdtemp()
-    for key, filename in SAMPLE_FILES.iteritems():
-        wav_file = os.path.join(tmpdir,
-                                media_utils.change_ext(filename, ".wav"))
-        media_utils.mp4_to_audio_file(
-            os.path.join(sample_dir, filename), wav_file
-        )
-        fingerprints, _ = fingerprint_full_file(wav_file)
-        prints[key] = SampleFingerprint(fingerprints, mask)
-
-    shutil.rmtree(tmpdir)
-
-    if pickle_file != None:
-        print("Writing fingerprints to {}...".format(pickle_path))
-        with open(pickle_path, "w") as pfi:
-            pickle.dump(prints, pfi)
-
-    return prints
 
 def window_error(window_print, sample_print, check_high_bits = True):
     """find minimum pct bit error for a short fingerprint segment compared
@@ -139,7 +43,8 @@ def window_error(window_print, sample_print, check_high_bits = True):
         offsets = chain(*[sample_print.masked_prints_i[val]
                           for val in intersect])
 
-    errs = [total_error(window_print, sample_print.fingerprint[offset:]) for
+    errs = [autocutter_utils.total_error(
+        window_print, sample_print.fingerprint[offset:]) for
             offset in offsets]
     
     if len(errs) == 0:
@@ -166,12 +71,13 @@ def next_window(chunks, chunk_index, chunk_pt, size):
     else:
         return None
     
-def fingerprint_transition_times(fingerprint_chunks, sample_prints,
-                                 transition_sequence = BASE_SEQUENCE,
-                                 cutting_pattern =
-                                 CUTTING_PATTERN_INTRO,
-                                 error_threshold = 0.22, time_threshold
-                                 = 2, window_size = 40):
+def fingerprint_transition_times(
+        fingerprint_chunks, sample_prints,
+        cutting_pattern = None,
+        transition_sequence = None,
+        error_threshold = 0.22,
+        time_threshold = 2,
+        window_size = 40):
     """identify indices in a fingerprint array where transition
     soundtracks start/stop.
 
@@ -181,6 +87,16 @@ def fingerprint_transition_times(fingerprint_chunks, sample_prints,
     segments of the array which lie between transition soundtracks
     (and are marked to be kept by CUTTING_PATTERN).
     """
+
+    if transition_sequence == None:
+        transition_sequence = cr_settings.DATA["audio_sequences"][
+            cr_settings.DATA["default_audio_sequence"]
+        ]
+
+    if cutting_pattern == None:
+        cutting_pattern = cr_settings.DATA["cutting_sequences"][
+            cr_settings.DATA["default_cutting_pattern"]
+        ]
     
     to_keep = []
     sequence = deque(transition_sequence)
@@ -243,7 +159,7 @@ def load_fingerprints(audio_files):
     channels = None
     print("Loading and fingerprinting audio files...")
     for filename in tqdm(audio_files):
-        fingerprint, data = fingerprint_full_file(filename)
+        fingerprint, data = autocutter_utils.fingerprint_full_file(filename)
         total_duration += data["duration"]
         if ((channels is not None and data["channels"] != channels) or
             (samplerate is not None and data["samplerate"] != samplerate)):
@@ -271,8 +187,8 @@ def write_transitions(input_file, outfile_name, transitions, start_index):
     n = input_file.getnframes()
     current = input_file.tell()
     clamped_transitions =  [
-        (clamp(start - start_index, 0, n), 
-         clamp(end - start_index, 0, n))
+        (autocutter_utils.clamp(start - start_index, 0, n), 
+         autocutter_utils.clamp(end - start_index, 0, n))
         for start, end in transitions
     ]
 
@@ -306,7 +222,7 @@ def recut_files(input_files, output_dir, transition_times, pattern,
     """
     start_index = 0
 
-    if not valid_pattern(pattern) and not merge:
+    if not autocutter_utils.valid_pattern(pattern) and not merge:
         raise Exception("improper split pattern: {}".format(pattern))
     
     if merge:
@@ -356,7 +272,9 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
 
     returns the name(s) of the created file(s).
     """
-    sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
+    sample_prints = sample_fingerprint.load_prints(
+        sample_file=cr_settings.DATA["sample_data_file"]
+    )
 
     (fingerprints, total_duration,
      samplerate, channels) = load_fingerprints(audio_files)
@@ -368,14 +286,13 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
     
 
     if keep_intro:
-        cutting_pattern = CUTTING_PATTERN_INTRO
+        cutting_pattern = cr_settings.DATA["cutting_sequences"]["keep_intro"]
     else:
-        cutting_pattern = CUTTING_PATTERN_NO_INTRO
+        cutting_pattern = cr_settings.DATA["cutting_sequences"]["cut_intro"]
         
     fp_transitions = fingerprint_transition_times(
-        fingerprints, sample_prints,
-        window_size = fingerprint_window,
-        cutting_pattern = cutting_pattern
+        fingerprints, sample_prints, cutting_pattern,
+        window_size = fingerprint_window
     )
 
     pcm_transitions = [(int(samplerate * s / fingerprint_rate),
@@ -391,7 +308,7 @@ def autocut(audio_files, output_file, window_time = 10.0, keep_intro=False,
             shutil.rmtree(tmpdir)
         else:
             print("Debug mode: autocutter preserving temporary directory "
-                  "{}".format(tmpdir))            
+                  "{}".format(tmpdir))
     return output_files
 
 def get_autocut_errors(audio_files, window_time = 10.0):
@@ -399,7 +316,9 @@ def get_autocut_errors(audio_files, window_time = 10.0):
     array for AUDIO_FILES and the sample transition arrays
 
     """
-    sample_prints = load_sample_prints(pickle_file=SAMPLE_FINGERPRINT)
+    sample_prints = sample_fingerprint.load_prints(
+        sample_file=cr_settings.DATA["sample_data_file"]
+    )
     
     (fingerprints, total_duration,
      samplerate, channels) = load_fingerprints(audio_files)

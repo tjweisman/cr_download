@@ -1,3 +1,6 @@
+import acoustid
+import audioread
+
 def invert(arr):
     iv = {}
     for i, v in enumerate(arr):
@@ -25,3 +28,17 @@ def clamp(val, mn, mx):
 
 def valid_pattern(pattern):
     return pattern.count("*") == 1
+
+def fingerprint_full_file(filename):
+    """read an audio file and compute its full chromaprint
+    """
+    with audioread.audio_open(filename) as f:
+        data = {"duration":f.duration,
+                "samplerate":f.samplerate,
+                "channels":f.channels}
+        fp = acoustid.fingerprint(
+            f.samplerate, f.channels, iter(f), f.duration
+        )
+        fprint = acoustid.chromaprint.decode_fingerprint(fp)[0]
+    return fprint, data
+

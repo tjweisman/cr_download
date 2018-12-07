@@ -1,0 +1,21 @@
+sample_audio_files:
+  overture : overture.mp3
+  c2_intro_1 : Critical Role Campaign 2 Intro.mp3
+  c2_intro_2 : Critical Role Campaign 2 Intro.mp3
+  dndbeyond : DD Beyond Official Theme.mp3
+
+audio_sequences: 
+        campaign_2_original: [overture, c2_intro_1, dndbeyond, overture, overture]
+        campaign_2_newtheme: [overture, c2_intro_2, dndbeyond, overture, overture]
+        campaign_2_doubletheme: [overture, c2_intro_2, c2_intro_2, dndbeyond, overture, overture]
+
+cutting_sequences:
+        cut_intro: [C, C, C, C, K, C, C, C, K, C]
+        keep_intro: [C, C, K, C, K, C, C, C, K, C]
+        cut_intro_double: [C, C, C, C, C, C, K, C, C, C, K, C]
+
+sample_data_file: sample_fingerprints
+
+
+default_audio_sequence: campaign_2_original
+default_cutting_pattern: cut_intro
