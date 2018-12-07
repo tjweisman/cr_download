@@ -290,9 +290,9 @@ def main(arguments):
                           " download any vods): ")
         try:
             if int(index) > 0 and int(index) <= len(vods):
-                title = prompt_title(vods[int(index)],
+                title = prompt_title(vods[int(index) - 1],
                                      title_format = autocut_split)
-                to_download = [(vods[int(index)], title)]
+                to_download = [(vods[int(index) - 1], title)]
         except ValueError:
             pass
     else:
