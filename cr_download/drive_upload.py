@@ -14,7 +14,7 @@ from apiclient.http import MediaFileUpload
 from oauth2client.file import Storage
 from progressbar import ProgressBar
 
-import cr_settings
+from . import cr_settings
 
 
 XFER_FOLDER_NAME="xfer"
@@ -39,8 +39,8 @@ def get_xfer_id(service):
             return all_children[0]['id']
         else:
             return None
-    except errors.HttpError, error:
-        print "Error: %s" % error
+    except errors.HttpError as error:
+        print("Error: %s" % error)
 
 def upload_file(service, filename, parent_id):
     #use SERVICE to upload file FILENAME to Drive folder with id PARENT_ID

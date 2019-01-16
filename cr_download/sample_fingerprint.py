@@ -3,9 +3,9 @@ import pickle
 import tempfile
 import shutil
 
-import media_utils
-import cr_settings
-import autocutter_utils
+from . import media_utils
+from . import cr_settings
+from . import autocutter_utils
 
 MASK = 0xFF000000
 
@@ -49,7 +49,7 @@ def load_prints(mask = MASK, sample_file = None):
                 prints = pickle.load(pfi)
             return prints
         except IOError:
-            print("Could not open samples from {}. ".format(pickle_path))
+            print(("Could not open samples from {}. ".format(pickle_path)))
 
     print("Generating fingerprints...")
     prints = {}
@@ -57,7 +57,7 @@ def load_prints(mask = MASK, sample_file = None):
 
     tmpdir = tempfile.mkdtemp()
     sample_audio_files = cr_settings.DATA["sample_audio_files"]
-    for key, filename in sample_audio_files.iteritems():
+    for key, filename in sample_audio_files.items():
         wav_file = os.path.join(tmpdir,
                                 media_utils.change_ext(filename, ".wav"))
         media_utils.mp4_to_audio_file(
@@ -69,7 +69,7 @@ def load_prints(mask = MASK, sample_file = None):
     shutil.rmtree(tmpdir)
 
     if sample_file != None:
-        print("Writing fingerprints to {}...".format(pickle_path))
+        print(("Writing fingerprints to {}...".format(pickle_path)))
         with open(pickle_path, "w") as pfi:
             pickle.dump(prints, pfi)
 

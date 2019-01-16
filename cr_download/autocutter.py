@@ -9,11 +9,11 @@ from collections import deque
 import wave
 from tqdm import tqdm
 
-import media_utils
-import cr_settings
+from . import media_utils
+from . import cr_settings
 
-import autocutter_utils
-import sample_fingerprint
+from . import autocutter_utils
+from . import sample_fingerprint
 
 CUT = "C"
 KEEP = "K"
@@ -256,9 +256,9 @@ def recut_files(input_files, output_dir, transition_times, pattern,
         start_index += input_audio.getnframes()
         input_audio.close()
         
-    for output, contents in edited_files.iteritems():
+    for output, contents in edited_files.items():
         media_utils.merge_audio_files(contents, output)
-    return edited_files.keys()
+    return list(edited_files.keys())
 
 def autocut(audio_files, output_file, window_time = 10.0,
             cutting_sequence = "default", debug=False,
@@ -306,8 +306,8 @@ def autocut(audio_files, output_file, window_time = 10.0,
         if (not DEBUG and not debug):
             shutil.rmtree(tmpdir)
         else:
-            print("Debug mode: autocutter preserving temporary directory "
-                  "{}".format(tmpdir))
+            print(("Debug mode: autocutter preserving temporary directory "
+                  "{}".format(tmpdir)))
     return output_files
 
 def get_autocut_errors(audio_files, window_time = 10.0):

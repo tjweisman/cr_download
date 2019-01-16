@@ -16,7 +16,7 @@ import json
 
 import requests
 
-import cr_settings
+from . import cr_settings
 
 CONFIG_FILENAME = ".streamlinkconfig"
 

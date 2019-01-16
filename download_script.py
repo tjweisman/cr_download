@@ -112,7 +112,7 @@ def guess_title(title, title_format=False):
 def confirm(prompt):
     confirm = "X"
     while confirm.strip().upper() not in ["Y", "N", ""]:
-        confirm = raw_input(prompt + " [Y]/N ")
+        confirm = input(prompt + " [Y]/N ")
         if confirm.strip().upper() in ["Y", ""]:
             return True
     return False
@@ -135,7 +135,7 @@ def prompt_title(vod, title_format=False):
 
     invalid_title = True
     while invalid_title:
-        title = raw_input(prompt_str)
+        title = input(prompt_str)
         if len(title.strip()) == 0:
             title = ep_title
         invalid_title = title_format and not valid_pattern(title)
@@ -156,8 +156,8 @@ def ask_each_vod(vods, ask_title=True, title_format=False):
     """
     to_download = []
     for vod in vods:
-        print u"Possible CR Episode found: {}".format(vod["title"])
-        print "Length: {}".format(timedelta(seconds=int(vod["length"])))
+        print("Possible CR Episode found: {}".format(vod["title"]))
+        print("Length: {}".format(timedelta(seconds=int(vod["length"]))))
 
         if confirm("Download vod?"):
             if ask_title:
@@ -195,8 +195,8 @@ def try_autocut(filepaths, output,
 def upload_file(title):
     from cr_download import drive_upload
     
-    ostr = u"Uploading {} to 'xfer' folder in Google Drive..."
-    print(ostr.format(title))
+    ostr = "Uploading {} to 'xfer' folder in Google Drive..."
+    print((ostr.format(title)))
     drive_upload.single_xfer_upload(title)
 
 def download_vods(to_download, arguments, dst_dir):
@@ -285,16 +285,16 @@ def main(arguments):
 
     vods.sort(key = lambda vod: vod["recorded_at"])
     
-    print "{} vod(s) found.".format(len(vods))
+    print("{} vod(s) found.".format(len(vods)))
     for i, vod in enumerate(vods):
-        print u"{}. ({}) {}".format(i+1,
+        print("{}. ({}) {}".format(i+1,
                                    timedelta(seconds=int(vod["length"])),
-                                   vod["title"])
+                                   vod["title"]))
 
     to_download = []
     
     if arguments.select:
-        index = raw_input("Select a vod to download (hit enter to not"
+        index = input("Select a vod to download (hit enter to not"
                           " download any vods): ")
         try:
             if int(index) > 0 and int(index) <= len(vods):
@@ -317,7 +317,7 @@ def main(arguments):
     else:
         vod_dir = "."
     try:
-        print("Downloading {} vod(s)...".format(len(to_download)))
+        print(("Downloading {} vod(s)...".format(len(to_download))))
         video_files = download_vods(to_download, arguments, vod_dir)
         print("Converting vod(s) to audio...")
         if arguments.merge:
@@ -330,11 +330,11 @@ def main(arguments):
         if not debug:
             shutil.rmtree(tmpdir)
         else:
-            print ("Debug mode: downloader script preserving temporary "
-                   "directory {}".format(tmpdir))
+            print(("Debug mode: downloader script preserving temporary "
+                   "directory {}".format(tmpdir)))
 
     if arguments.upload:
-        print("Uploading {} audio file(s)...".format(len(audio_files)))
+        print(("Uploading {} audio file(s)...".format(len(audio_files))))
         for audio_file in audio_files:
               upload_file(audio_file)
 
