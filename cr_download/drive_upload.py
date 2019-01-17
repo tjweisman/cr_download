@@ -7,6 +7,8 @@ This is super brittle and does basically no error checking.
 
 """
 
+from __future__ import print_function
+
 import httplib2, os
 
 from apiclient import discovery, errors

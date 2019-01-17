@@ -10,24 +10,18 @@ Critical Role VOD in mp4 form.
 import sys
 from argparse import ArgumentParser
 import tempfile
-import os
 import shutil
-
-from cr_download import autocutter
-from cr_download.autocutter_utils import valid_pattern
-from cr_download import media_utils
 
 from download_script import videos_to_merged_audio, prompt_title
 
-def init_args():
+def _init_args():
     parser = ArgumentParser(
-        description= """Automatically recut the .mp4 video file for a 
+        description="""Automatically recut the .mp4 video file for a
         Critical Role episode"""
     )
 
     parser.add_argument("filenames", nargs="+",
-                        help="""filename(s) of .mp4 files to autocut"""
-    )
+                        help="""filename(s) of .mp4 files to autocut""")
 
     parser.add_argument("-d", "--debug", dest="debug", action="store_true",
                         help="debug mode (keep temporary files)")
@@ -55,9 +49,9 @@ def init_args():
                         announcements/intro section""")
 
     return parser.parse_args(sys.argv[1:])
-    
 
-def main(arguments):
+
+def _main(arguments):
     vod = {"title":""}
     title = prompt_title(vod, arguments.autocut)
     tmpdir = tempfile.mkdtemp()
@@ -67,11 +61,11 @@ def main(arguments):
                                              arguments,
                                              tmpdir,
                                              title)
+        print("Output audio files to:\n" + "\n".join(audio_files))
     finally:
         if not arguments.debug:
             shutil.rmtree(tmpdir)
-    
+
 
 if __name__ == "__main__":
-    arguments = init_args()
-    main(arguments)
+    _main(_init_args())

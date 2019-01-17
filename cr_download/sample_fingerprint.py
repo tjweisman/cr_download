@@ -1,3 +1,6 @@
+from __future__ import print_function
+from future.utils import iteritems
+
 import os
 import pickle
 import tempfile
@@ -57,7 +60,7 @@ def load_prints(mask = MASK, sample_file = None):
 
     tmpdir = tempfile.mkdtemp()
     sample_audio_files = cr_settings.DATA["sample_audio_files"]
-    for key, filename in sample_audio_files.items():
+    for key, filename in sample_audio_files.iteritems():
         wav_file = os.path.join(tmpdir,
                                 media_utils.change_ext(filename, ".wav"))
         media_utils.mp4_to_audio_file(

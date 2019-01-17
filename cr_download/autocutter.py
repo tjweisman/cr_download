@@ -1,3 +1,7 @@
+from __future__ import print_function
+from future.utils import iteritems
+from builtins import dict
+
 import os
 import subprocess
 import re
@@ -256,9 +260,9 @@ def recut_files(input_files, output_dir, transition_times, pattern,
         start_index += input_audio.getnframes()
         input_audio.close()
         
-    for output, contents in edited_files.items():
+    for output, contents in edited_files.iteritems():
         media_utils.merge_audio_files(contents, output)
-    return list(edited_files.keys())
+    return list(edited_files)
 
 def autocut(audio_files, output_file, window_time = 10.0,
             cutting_sequence = "default", debug=False,
