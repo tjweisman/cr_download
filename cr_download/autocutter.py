@@ -191,7 +191,7 @@ def write_transitions(input_file, outfile_name, transitions, start_index):
         for start, end in transitions
     ]
 
-    output_file = wave.open(outfile_name, "w")
+    output_file = wave.open(outfile_name, "wb")
     output_file.setparams(input_file.getparams())
     
     for start, end in clamped_transitions:
@@ -244,7 +244,7 @@ def recut_files(input_files, output_dir, transition_times, pattern,
             os.path.basename(infile),
             ".wav"
         )
-        input_audio = wave.open(infile, "r")
+        input_audio = wave.open(infile, "rb")
         for name, transitions in names:
             
             outfile_name = os.path.join(oput_dirs[name], outfile_basename)

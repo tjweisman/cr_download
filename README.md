@@ -21,6 +21,18 @@ Google Drive/WiFi is faster than Bluetooth).
 
 For usage help, run `python download_script.py -h`.
 
+Setup
+==========================
+
+1. Install required dependencies (see below)
+
+2. Copy the contents of the "config" directory into ~/.config/cr_download
+
+3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
+of the displayed page into the file
+`~/.config/cr_download/.streamlinkconfig` (you will need to create
+this file).
+
 Dependencies:
 ==========================
 
@@ -39,3 +51,8 @@ Dependencies:
   
 - [Google API python client](https://developers.google.com/api-client-library/python/)
   (optional)
+
+TODO
+============================
+
+- Streamline the "setup" process so it doesn't involve manual configuration

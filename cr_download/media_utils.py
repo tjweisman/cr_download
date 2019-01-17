@@ -11,7 +11,7 @@ def file_list(directory, pattern):
     return matched_files
 
 def merge_audio_files(files, output):
-    with tempfile.NamedTemporaryFile() as filelist:
+    with tempfile.NamedTemporaryFile(mode="w+") as filelist:
         for name in files:
             filelist.write("file '{}'\n".format(name))
         filelist.flush()
@@ -27,7 +27,7 @@ def mp4_to_audio_segments(video_file, output_dir, segment_fmt):
         output_dir,
         change_ext(basename, "%03d{}".format(segment_fmt))
     )
-    with tempfile.NamedTemporaryFile() as filelist:
+    with tempfile.NamedTemporaryFile(mode='w+') as filelist:
         subprocess.call(["ffmpeg", "-i", video_file, "-f", "segment",
                          "-segment_time", "1800", "-segment_list",
                          filelist.name, pattern])

@@ -45,7 +45,7 @@ def load_prints(mask = MASK, sample_file = None):
     if sample_file is not None:
         pickle_path = os.path.join(cr_settings.CONFIG_DIR, sample_file)
         try:
-            with open(pickle_path, "r") as pfi:
+            with open(pickle_path, "rb") as pfi:
                 prints = pickle.load(pfi)
             return prints
         except IOError:
@@ -70,7 +70,7 @@ def load_prints(mask = MASK, sample_file = None):
 
     if sample_file != None:
         print(("Writing fingerprints to {}...".format(pickle_path)))
-        with open(pickle_path, "w") as pfi:
+        with open(pickle_path, "wb") as pfi:
             pickle.dump(prints, pfi)
 
     return prints
