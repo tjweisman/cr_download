@@ -3,8 +3,6 @@ from future.utils import iteritems
 from builtins import dict
 
 import os
-import subprocess
-import re
 import tempfile
 import shutil
 from itertools import chain
@@ -30,18 +28,18 @@ class AutocutterException(Exception):
 class AudioException(Exception):
     pass
 
-def window_error(window_print, sample_print, check_high_bits = True):
+def window_error(window_print, sample_print, check_high_bits=True):
     """find minimum pct bit error for a short fingerprint segment compared
     to the fingerprint of a transition soundtrack.
 
     we slide the window across the sample, computing percent bit
     errors, and take the minimum. If CHECK_HIGH_BITS is specified, do
     a first pass so we only check points where the high-order bits of
-    the sample/window agree. 
+    the sample/window agree.
     """
     offsets = range(len(sample_print) - len(window_print))
     if check_high_bits:
-        masked_prints = set([prt & sample_print.mask for prt in window_print])
+        masked_prints = {prt & sample_print.mask for prt in window_print}
         intersect = masked_prints & sample_print.masked_prints_s
         offsets = chain(*[sample_print.masked_prints_i[val]
                           for val in intersect])
@@ -49,10 +47,10 @@ def window_error(window_print, sample_print, check_high_bits = True):
     errs = [autocutter_utils.total_error(
         window_print, sample_print.fingerprint[offset:]) for
             offset in offsets]
-    
-    if len(errs) == 0:
+
+    if not errs:
         return 1.0
-    
+
     return min(errs)
 
 def next_window(chunks, chunk_index, chunk_pt, size):
@@ -69,18 +67,18 @@ def next_window(chunks, chunk_index, chunk_pt, size):
             window += chunks[1 + i][:diff]
             i = i + 1
             j = diff
-        
+
         return (window, i, j)
-    else:
-        return None
-    
+
+    return None
+
 def fingerprint_transition_times(
         fingerprint_chunks, sample_prints,
-        cutting_pattern = None,
-        transition_sequence = None,
-        error_threshold = 0.22,
-        time_threshold = 2,
-        window_size = 40):
+        cutting_pattern=None,
+        transition_sequence=None,
+        error_threshold=0.22,
+        time_threshold=2,
+        window_size=40):
     """identify indices in a fingerprint array where transition
     soundtracks start/stop.
 
@@ -91,16 +89,16 @@ def fingerprint_transition_times(
     (and are marked to be kept by CUTTING_PATTERN).
     """
 
-    if transition_sequence == None:
+    if transition_sequence is None:
         transition_sequence = cr_settings.DATA["audio_sequences"][
             cr_settings.DATA["default_audio_sequence"]
         ]
 
-    if cutting_pattern == None:
+    if cutting_pattern is None:
         cutting_pattern = cr_settings.DATA["cutting_sequences"][
             cr_settings.DATA["default_cutting_sequence"]
         ]
-    
+
     to_keep = []
     sequence = deque(transition_sequence)
     pattern = deque(cutting_pattern)
@@ -110,7 +108,7 @@ def fingerprint_transition_times(
     interval_start = 0
     chunk_index = 0
     chunk_pt = 0
-    
+
     ashift_frame_ct = 0
     ashift_frame_start = 0
 
@@ -118,14 +116,14 @@ def fingerprint_transition_times(
 
     print("Finding transition times...")
     for i in tqdm(range(0, total_length, window_size)):
-        
+
         print_window, chunk_index, chunk_pt = next_window(
             fingerprint_chunks, chunk_index, chunk_pt, window_size
         )
         error = window_error(print_window, sample_prints[expected_sample])
 
-        
-        if ((transitioning and error > error_threshold) or
+
+        if ((transitioning and error > error_threshold)or
             ((not transitioning) and (error < error_threshold))):
             if ashift_frame_ct == 0:
                 ashift_frame_start = i
@@ -137,7 +135,7 @@ def fingerprint_transition_times(
             if state == KEEP:
                 to_keep.append((interval_start, ashift_frame_start))
 
-            if len(pattern) == 0 or len(sequence) == 0:
+            if not pattern or not sequence:
                 return to_keep
 
             state = pattern.popleft()
@@ -189,15 +187,15 @@ def write_transitions(input_file, outfile_name, transitions, start_index):
 
     n = input_file.getnframes()
     current = input_file.tell()
-    clamped_transitions =  [
-        (autocutter_utils.clamp(start - start_index, 0, n), 
+    clamped_transitions = [
+        (autocutter_utils.clamp(start - start_index, 0, n),
          autocutter_utils.clamp(end - start_index, 0, n))
         for start, end in transitions
     ]
 
     output_file = wave.open(outfile_name, "wb")
     output_file.setparams(input_file.getparams())
-    
+
     for start, end in clamped_transitions:
         input_file.readframes(start - current)
         output_file.writeframes(input_file.readframes(end - start))
@@ -209,7 +207,7 @@ def write_transitions(input_file, outfile_name, transitions, start_index):
     return total_written
 
 def recut_files(input_files, output_dir, transition_times, pattern,
-                merge = False):
+                merge=False):
     """Cut out unwanted portions of an array of audio files.
 
     TRANSITION_TIMES marks the endpoints kept portions of the array as
@@ -227,7 +225,7 @@ def recut_files(input_files, output_dir, transition_times, pattern,
 
     if not autocutter_utils.valid_pattern(pattern) and not merge:
         raise Exception("improper split pattern: {}".format(pattern))
-    
+
     if merge:
         names = [(pattern, transition_times)]
     else:
@@ -235,13 +233,13 @@ def recut_files(input_files, output_dir, transition_times, pattern,
             (pattern.replace("*", str(i)), [endpts])
             for i, endpts in enumerate(transition_times)
         ]
-        
+
     oput_dirs = {name:os.path.join(output_dir, os.path.basename(name))
-                  for name, _ in names}
-        
+                 for name, _ in names}
+
     for oput_dir in oput_dirs.values():
         os.mkdir(oput_dir)
-            
+
     edited_files = {name:[] for name, _ in names}
     for infile in tqdm(input_files):
         outfile_basename = media_utils.change_ext(
@@ -250,23 +248,23 @@ def recut_files(input_files, output_dir, transition_times, pattern,
         )
         input_audio = wave.open(infile, "rb")
         for name, transitions in names:
-            
+
             outfile_name = os.path.join(oput_dirs[name], outfile_basename)
             frames = write_transitions(input_audio, outfile_name,
                                        transitions, start_index)
-            
+
             if frames > 0:
                 edited_files[name].append(outfile_name)
         start_index += input_audio.getnframes()
         input_audio.close()
-        
+
     for output, contents in edited_files.iteritems():
         media_utils.merge_audio_files(contents, output)
     return list(edited_files)
 
-def autocut(audio_files, output_file, window_time = 10.0,
-            cutting_sequence = "default", debug=False,
-            merge_segments = False):
+def autocut(audio_files, output_file, window_time=10.0,
+            cutting_sequence="default", debug=False,
+            merge_segments=False):
     """automatically edit the array of audio files to exclude transitions
     and specific segments between them.
 
@@ -284,23 +282,23 @@ def autocut(audio_files, output_file, window_time = 10.0,
      samplerate, channels) = load_fingerprints(audio_files)
 
     total_print_len = sum([len(chunk) for chunk in fingerprints])
-    
+
     fingerprint_rate = total_print_len / total_duration
     fingerprint_window = int(window_time * fingerprint_rate)
-    
+
 
     cutting_pattern = cr_settings.DATA["cutting_sequences"].get(
         cutting_sequence
     )
-    
+
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, cutting_pattern,
-        window_size = fingerprint_window
+        window_size=fingerprint_window
     )
 
-    pcm_transitions = [(int(samplerate * s / fingerprint_rate),
-                        int(samplerate * e / fingerprint_rate))
-                       for s,e in fp_transitions]
+    pcm_transitions = [(int(samplerate * start / fingerprint_rate),
+                        int(samplerate * end / fingerprint_rate))
+                       for start, end in fp_transitions]
 
     tmpdir = tempfile.mkdtemp()
     try:
@@ -311,10 +309,10 @@ def autocut(audio_files, output_file, window_time = 10.0,
             shutil.rmtree(tmpdir)
         else:
             print(("Debug mode: autocutter preserving temporary directory "
-                  "{}".format(tmpdir)))
+                   "{}".format(tmpdir)))
     return output_files
 
-def get_autocut_errors(audio_files, window_time = 10.0):
+def get_autocut_errors(audio_files, window_time=10.0):
     """get an array of the minimum bit diffs found in the fingerprint
     array for AUDIO_FILES and the sample transition arrays
 
@@ -322,10 +320,10 @@ def get_autocut_errors(audio_files, window_time = 10.0):
     sample_prints = sample_fingerprint.load_prints(
         sample_file=cr_settings.DATA["sample_data_file"]
     )
-    
+
     (fingerprints, total_duration,
      samplerate, channels) = load_fingerprints(audio_files)
-    
+
     total_len = sum([len(chunk) for chunk in fingerprints])
 
     fingerprint_rate = total_len / total_duration
@@ -335,18 +333,18 @@ def get_autocut_errors(audio_files, window_time = 10.0):
     chunk_pt = 0
 
     errors = []
-    for i in tqdm(range(0, total_len, window_size)):
+    for _ in tqdm(range(0, total_len, window_size)):
         print_window, chunk_index, chunk_pt = next_window(
             fingerprints, chunk_index, chunk_pt, window_size
         )
         error = min([window_error(print_window, spr)
-                        for spr in sample_prints.values()])
+                     for spr in sample_prints.values()])
         errors.append(error)
 
     return errors
 
-def autocut_file(input_file, output_file, window_time = 10.0,
-                 debug = False):
+def autocut_file(input_file, output_file, window_time=10.0,
+                 debug=False):
     """helper function (not used) to autocut a single audio file
 
     """

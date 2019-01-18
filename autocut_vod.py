@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 import tempfile
 import shutil
 
-from download_script import videos_to_merged_audio, prompt_title
+from download_script import videos_to_episode_audio, prompt_title
 
 def _init_args():
     parser = ArgumentParser(
@@ -56,12 +56,11 @@ def _main(arguments):
     title = prompt_title(vod, arguments.autocut)
     tmpdir = tempfile.mkdtemp()
     try:
-        filenames = [(None, name) for name in arguments.filenames]
-        audio_files = videos_to_merged_audio(filenames,
-                                             arguments,
-                                             tmpdir,
-                                             title)
-        print("Output audio files to:\n" + "\n".join(audio_files))
+
+        audio_files = videos_to_episode_audio(arguments.filenames, title,
+                                              arguments, tmpdir)
+
+        print("Output audio files to:\n" + "\n".join(sorted(list(audio_files))))
     finally:
         if not arguments.debug:
             shutil.rmtree(tmpdir)
