@@ -163,28 +163,6 @@ def prompt_title(vod, multiple_parts=False):
 
     return title
 
-
-def ask_each_vod(vods, ask_title=True, multiple_parts=False):
-    """Ask the user if they want to download each vod in VODs.
-
-    By default, ask the user to provide a title for the saved audio
-    file (or a template if multiple audio files will be generated).
-
-    """
-    to_download = []
-    for vod in vods:
-        print("Possible CR Episode found: {}".format(vod["title"]))
-        print("Length: {}".format(timedelta(seconds=int(vod["length"]))))
-
-        if confirm("Download vod?"):
-            if ask_title:
-                title = prompt_title(vod, multiple_parts)
-                to_download.append((vod, title))
-            else:
-                to_download.append((vod, None))
-
-    return to_download
-
 def try_autocut(filepaths, output,
                 cutting_sequence="default",
                 merge_segments=False,
@@ -216,117 +194,101 @@ def _upload_file(title):
     print((ostr.format(title)))
     drive_upload.single_xfer_upload(title)
 
-def download_vods(to_download, dst_dir):
+def download_vods(ep_title, to_download, dst_dir):
     """Download video files for the vods specified in TO_DOWNLOAD.
 
     """
     video_files = []
-    for i, (vod, ep_title) in enumerate(to_download):
-        filename = os.path.join(dst_dir, "crvid{:02}.mp4".format(i))
+    video_base = media_utils.change_ext(ep_title, "")
+    for i, vod in enumerate(to_download):
+        filename = os.path.join(dst_dir, "{}{:02}.mp4".format(video_base, i))
         twitch_download.dload_ep_video(vod, filename)
-        video_files.append((ep_title, filename))
+        video_files.append(filename)
 
     return video_files
 
-def videos_to_audio(video_files, arguments, tmpdir):
-    """convert each video file in VIDEO_FILES to one or more audio files.
-
-    if arguments.autocut is specified (but not
-    arguments.autocut_merge), this will create one audio file for each
-    part of the video (determined by autocut). Otherwise one audio
-    file for each video is created.
-
-    return the name(s) of the audio file(s) created.
-
-    """
-    outfiles = []
-    for ep_title, filename in video_files:
-        if arguments.autocut:
-            filelist = media_utils.mp4_to_audio_segments(
-                filename, tmpdir,
-                segment_fmt=".wav")
-            outfiles += try_autocut(filelist, ep_title,
-                                    arguments.cutting_sequence,
-                                    arguments.autocut_merge,
-                                    debug=arguments.debug)
-        else:
-            outfiles.append(media_utils.mp4_to_audio_file(filename, ep_title))
-
-    return outfiles
-
-def videos_to_merged_audio(video_files, arguments, tmpdir, merge_title):
+def videos_to_episode_audio(video_files, title, arguments, tmpdir):
     """convert all of the files in VIDEO_FILES to one or more audio files.
 
-    if arguments.autocut is specified (but not
-    arguments.autocut_merge), this will create one audio file for each
-    part of the episode (determined by autocut). Otherwise a single
-    audio file is created.
+    if arguments.merge is specified, treat each file in VIDEO_FILES as
+    a piece of a larger episode. Otherwise treat each file as an individual episode.
+
+    if arguments.autocut is specified, run the autocutting algorithm
+    on each episode before outputting. if, in addition, autocut_merge
+    is specified, the different parts of the (autocut) episode are
+    merged into a single audio file.
 
     return the name(s) of the audio file(s) created.
 
     """
-    filelist = []
-    for _, filename in video_files:
-        if arguments.autocut:
-            filelist += media_utils.mp4_to_audio_segments(
+
+    episodes = []
+    for filename in video_files:
+        episodes.append(
+            media_utils.mp4_to_audio_segments(
                 filename, tmpdir,
-                segment_fmt=".wav")
+                segment_fmt=".wav"))
+
+    output_files = []
+    for episode_segments in episodes:
+        if arguments.autocut:
+            output_files += try_autocut(episode_segments, title,
+                                        arguments.cutting_sequence,
+                                        arguments.autocut_merge,
+                                        debug=arguments.debug)
         else:
-            mfile = os.path.join(
-                tmpdir, media_utils.change_ext(filename, ".wav"))
-            filelist.append(media_utils.mp4_to_audio_file(filename, mfile))
+            output_files.append(media_utils.merge_audio_files(episode_segments, title))
+
+    return output_files
+
+def vod_index_select(vods, split_episodes):
+    to_download = {}
+    index = input("Select a vod to download (hit enter to not"
+                  " download any vods): ")
+    try:
+        if int(index) > 0 and int(index) <= len(vods):
+            title = prompt_title(vods[int(index) - 1],
+                                 multiple_parts=split_episodes)
+            to_download[title] = [vods[int(index) - 1]]
+    except ValueError:
+        pass
+
+    return to_download
 
 
-    if arguments.autocut:
-        outfiles = try_autocut(filelist, merge_title,
-                               arguments.cutting_sequence,
-                               arguments.autocut_merge,
-                               debug=arguments.debug)
-    else:
-        files = [os.path.join(tmpdir, filename) for filename in filelist]
-        outfiles = [media_utils.merge_audio_files(files, merge_title)]
-
-    return outfiles
-
-def select_vods_to_download(vods, index_select, merge_files, split_episodes):
-    """display a list of retrieved vods and prompt the user to select one
-    or more to download.
+def vod_confirm_select(vods, merge_files, split_episodes):
+    """Prompt the user to confirm downloading each vod from a given list.
 
     The user is then given a prompt for a filename to save each one under.
 
-    If INDEX_SELECT is specified, the user enters the index of the vod
-    to download. Otherwise, ask the user to confirm the download for
-    every vod in the list.
-
     """
-    to_download = []
+    to_download = {}
 
-    if index_select:
-        index = input("Select a vod to download (hit enter to not"
-                      " download any vods): ")
-        try:
-            if int(index) > 0 and int(index) <= len(vods):
-                title = prompt_title(vods[int(index) - 1],
-                                     multiple_parts=split_episodes)
-                to_download = [(vods[int(index) - 1], title)]
-        except ValueError:
-            pass
-    else:
-        to_download = ask_each_vod(vods,
-                                   ask_title=merge_files,
-                                   multiple_parts=split_episodes)
+    episode_vods = []
+    for vod in vods:
+        print("Possible CR Episode found: {}".format(vod["title"]))
+        print("Length: {}".format(timedelta(seconds=int(vod["length"]))))
+
+        if confirm("Download vod?"):
+            if not merge_files:
+                title = prompt_title(vod, split_episodes)
+                to_download[title] = [vod]
+            else:
+                episode_vods.append(vod)
+
+    if merge_files and episode_vods:
+        title = prompt_title(episode_vods[0], split_episodes)
+        to_download[title] = episode_vods
 
     return to_download
 
 
 def _main(arguments):
     debug = (DEBUG or arguments.debug)
-    cr_filter = arguments.regex
 
+    cr_filter = arguments.regex
     if arguments.index_select:
         cr_filter = None
-
-    split_episodes = (arguments.autocut and not arguments.autocut_merge)
 
     vods = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=arguments.limit)
@@ -339,33 +301,36 @@ def _main(arguments):
                                    timedelta(seconds=int(vod["length"])),
                                    vod["title"]))
 
-    to_download = select_vods_to_download(vods,
-                                          arguments.index_select,
-                                          arguments.merge,
-                                          split_episodes)
+    split_episodes = (arguments.autocut and not arguments.autocut_merge)
 
-    merge_title = None
-    if arguments.merge and to_download:
-        merge_title = prompt_title(to_download[0], multiple_parts=split_episodes)
+    if arguments.index_select:
+        to_download = vod_index_select(vods, split_episodes)
+    else:
+        to_download = vod_confirm_select(vods, arguments.merge,
+                                         split_episodes)
+
+    num_vods = sum([len(ep_vods) for ep_vods in to_download.values()])
 
     tmpdir = tempfile.mkdtemp()
+
     if arguments.cleanup:
         vod_dir = tmpdir
     else:
         vod_dir = "."
 
     try:
-        print(("Downloading {} vod(s)...".format(len(to_download))))
-        video_files = download_vods(to_download, vod_dir)
+        print(("Downloading {} vod(s)...".format(num_vods)))
+        episode_files = {title: download_vods(title, vods, vod_dir)
+                         for title, vods in to_download.items()}
 
         print("Converting vod(s) to audio...")
-        if arguments.merge:
-            audio_files = videos_to_merged_audio(video_files,
-                                                 arguments, tmpdir,
-                                                 merge_title)
-        else:
-            audio_files = videos_to_audio(video_files, arguments, tmpdir)
-        print("Output audio files to:\n" + "\n".join(audio_files))
+
+        audio_files = {
+            title: videos_to_episode_audio(video_files, title, arguments, tmpdir)
+            for title, video_files in episode_files.items()
+        }
+
+        print("Output audio files to:\n" + "\n".join(sorted(list(audio_files))))
 
     finally:
         if not debug:
