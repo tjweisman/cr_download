@@ -22,6 +22,9 @@ KEEP = "K"
 
 DEBUG = False
 
+DEFAULT_ERROR_THRESHOLD = 0.22
+DEFAULT_TIME_THRESHOLD = 2
+
 class AutocutterException(Exception):
     pass
 
@@ -53,31 +56,32 @@ def window_error(window_print, sample_print, check_high_bits=True):
 
     return min(errs)
 
-def next_window(chunks, chunk_index, chunk_pt, size):
-    """get the next fixed-size window in an array of fingerprint arrays
+def fingerprint_windows(chunks, size):
+    """generator for a sequence of fixed-size windows in an array of
+    fingerprint arrays
 
     """
-    i = chunk_index
-    j = chunk_pt
-    if i < len(chunks):
-        window = chunks[i][j:j + size]
-        j = j + size
-        if len(window) < size and i + 1 < len(chunks):
+    chunk_index = 0
+    chunk_pt = 0
+
+    if chunk_index < len(chunks):
+        window = chunks[chunk_index][chunk_pt:chunk_pt + size]
+        chunk_pt += size
+        if len(window) < size and chunk_index + 1 < len(chunks):
             diff = size - len(window)
-            window += chunks[1 + i][:diff]
-            i = i + 1
-            j = diff
+            window += chunks[1 + chunk_index][:diff]
+            chunk_index += 1
+            chunk_pt = diff
 
-        return (window, i, j)
+        yield window
 
-    return None
 
 def fingerprint_transition_times(
         fingerprint_chunks, sample_prints,
         cutting_pattern=None,
         transition_sequence=None,
-        error_threshold=0.22,
-        time_threshold=2,
+        error_threshold=DEFAULT_ERROR_THRESHOLD,
+        time_threshold=DEFAULT_TIME_THRESHOLD,
         window_size=40):
     """identify indices in a fingerprint array where transition
     soundtracks start/stop.
@@ -105,28 +109,21 @@ def fingerprint_transition_times(
     expected_sample = sequence.popleft()
     transitioning = False
     state = pattern.popleft()
-    interval_start = 0
-    chunk_index = 0
-    chunk_pt = 0
 
+    interval_start = 0
     ashift_frame_ct = 0
     ashift_frame_start = 0
 
-    total_length = sum([len(chunk) for chunk in fingerprint_chunks])
-
     print("Finding transition times...")
-    for i in tqdm(range(0, total_length, window_size)):
+    for i, window in tqdm(enumerate(fingerprint_windows(
+            fingerprint_chunks, window_size))):
 
-        print_window, chunk_index, chunk_pt = next_window(
-            fingerprint_chunks, chunk_index, chunk_pt, window_size
-        )
-        error = window_error(print_window, sample_prints[expected_sample])
+        error = window_error(window, sample_prints[expected_sample])
 
-
-        if ((transitioning and error > error_threshold)or
+        if ((transitioning and error > error_threshold) or
             ((not transitioning) and (error < error_threshold))):
             if ashift_frame_ct == 0:
-                ashift_frame_start = i
+                ashift_frame_start = i * window_size
             ashift_frame_ct += 1
         else:
             ashift_frame_ct = 0
@@ -146,7 +143,8 @@ def fingerprint_transition_times(
             ashift_frame_ct = 0
             if not transitioning:
                 expected_sample = sequence.popleft()
-    if len(pattern) > 0 or len(sequence) > 0:
+
+    if pattern or sequence:
         raise AutocutterException("Did not find the full expected transition sequence")
     return to_keep
 
@@ -185,11 +183,11 @@ def write_transitions(input_file, outfile_name, transitions, start_index):
     """
     total_written = 0
 
-    n = input_file.getnframes()
+    num_frames = input_file.getnframes()
     current = input_file.tell()
     clamped_transitions = [
-        (autocutter_utils.clamp(start - start_index, 0, n),
-         autocutter_utils.clamp(end - start_index, 0, n))
+        (autocutter_utils.clamp(start - start_index, 0, num_frames),
+         autocutter_utils.clamp(end - start_index, 0, num_frames))
         for start, end in transitions
     ]
 
@@ -284,7 +282,7 @@ def autocut(audio_files, output_file, window_time=10.0,
     total_print_len = sum([len(chunk) for chunk in fingerprints])
 
     fingerprint_rate = total_print_len / total_duration
-    fingerprint_window = int(window_time * fingerprint_rate)
+    fingerprint_window_size = int(window_time * fingerprint_rate)
 
 
     cutting_pattern = cr_settings.DATA["cutting_sequences"].get(
@@ -293,7 +291,7 @@ def autocut(audio_files, output_file, window_time=10.0,
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, cutting_pattern,
-        window_size=fingerprint_window
+        window_size=fingerprint_window_size
     )
 
     pcm_transitions = [(int(samplerate * start / fingerprint_rate),
@@ -322,22 +320,17 @@ def get_autocut_errors(audio_files, window_time=10.0):
     )
 
     (fingerprints, total_duration,
-     samplerate, channels) = load_fingerprints(audio_files)
+     _, _) = load_fingerprints(audio_files)
 
     total_len = sum([len(chunk) for chunk in fingerprints])
 
     fingerprint_rate = total_len / total_duration
     window_size = int(window_time * fingerprint_rate)
 
-    chunk_index = 0
-    chunk_pt = 0
-
     errors = []
-    for _ in tqdm(range(0, total_len, window_size)):
-        print_window, chunk_index, chunk_pt = next_window(
-            fingerprints, chunk_index, chunk_pt, window_size
-        )
-        error = min([window_error(print_window, spr)
+    for window in tqdm(fingerprint_windows(fingerprints, window_size)):
+
+        error = min([window_error(window, spr)
                      for spr in sample_prints.values()])
         errors.append(error)
 
