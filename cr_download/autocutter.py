@@ -126,10 +126,9 @@ def fingerprint_transition_times(
             if not sequence:
                 break
 
+            transitioning = not transitioning
             if not transitioning:
                 expected_sample = sequence.popleft()
-
-            transitioning = not transitioning
 
     if sequence:
         raise AutocutterException("Did not find the full expected transition sequence")
