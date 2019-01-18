@@ -1,7 +1,7 @@
 from __future__ import print_function
-from future.utils import iteritems
 
 import os
+from itertools import chain
 import pickle
 import tempfile
 import shutil
@@ -27,6 +27,33 @@ class SampleFingerprint:
     def __len__(self):
         return len(self.fingerprint)
 
+    def window_error(self, window_print, check_high_bits=True):
+        """find minimum pct bit error for a short fingerprint segment compared
+        to the fingerprint of a transition soundtrack.
+
+        we slide the window across the sample, computing percent bit
+        errors, and take the minimum. If CHECK_HIGH_BITS is specified,
+        do a first pass so we only check points where the high-order
+        bits of the sample/window agree.
+        """
+        offsets = range(len(self) - len(window_print))
+
+        if check_high_bits:
+            masked_prints = {prt & self.mask for prt in window_print}
+            intersect = masked_prints & self.masked_prints_s
+            offsets = chain(*[self.masked_prints_i[val]
+                              for val in intersect])
+
+        errs = [
+            autocutter_utils.total_error(
+                window_print, self.fingerprint[offset:])
+            for offset in offsets
+        ]
+
+        if not errs:
+            return 1.0
+
+        return min(errs)
 
 def load_prints(mask = MASK, sample_file = None):
     """Load transition soundtrack fingerprint data from file(s).
@@ -43,7 +70,7 @@ def load_prints(mask = MASK, sample_file = None):
     data.
 
     """
-    
+
     print("Loading sample fingerprint data...")
     if sample_file is not None:
         pickle_path = os.path.join(cr_settings.CONFIG_DIR, sample_file)
@@ -60,7 +87,7 @@ def load_prints(mask = MASK, sample_file = None):
 
     tmpdir = tempfile.mkdtemp()
     sample_audio_files = cr_settings.DATA["sample_audio_files"]
-    for key, filename in sample_audio_files.iteritems():
+    for key, filename in sample_audio_files.items():
         wav_file = os.path.join(tmpdir,
                                 media_utils.change_ext(filename, ".wav"))
         media_utils.mp4_to_audio_file(

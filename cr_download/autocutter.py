@@ -12,7 +12,6 @@ from builtins import dict
 import os
 import tempfile
 import shutil
-from itertools import chain
 from collections import deque
 
 import wave
@@ -23,6 +22,7 @@ from . import cr_settings
 
 from . import autocutter_utils
 from . import sample_fingerprint
+from . import fingerprint_sequence
 
 CUT = "C"
 KEEP = "K"
@@ -39,58 +39,13 @@ class AutocutterException(Exception):
 
     """
 
-def window_error(window_print, sample_print, check_high_bits=True):
-    """find minimum pct bit error for a short fingerprint segment compared
-    to the fingerprint of a transition soundtrack.
-
-    we slide the window across the sample, computing percent bit
-    errors, and take the minimum. If CHECK_HIGH_BITS is specified, do
-    a first pass so we only check points where the high-order bits of
-    the sample/window agree.
-    """
-    offsets = range(len(sample_print) - len(window_print))
-    if check_high_bits:
-        masked_prints = {prt & sample_print.mask for prt in window_print}
-        intersect = masked_prints & sample_print.masked_prints_s
-        offsets = chain(*[sample_print.masked_prints_i[val]
-                          for val in intersect])
-
-    errs = [autocutter_utils.total_error(
-        window_print, sample_print.fingerprint[offset:]) for
-            offset in offsets]
-
-    if not errs:
-        return 1.0
-
-    return min(errs)
-
-def fingerprint_windows(chunks, size):
-    """generator for a sequence of fixed-size windows in an array of
-    fingerprint arrays
-
-    """
-    chunk_index = 0
-    chunk_pt = 0
-
-    while chunk_index < len(chunks):
-        window = chunks[chunk_index][chunk_pt:chunk_pt + size]
-        chunk_pt += size
-        if chunk_pt >= len(chunks[chunk_index]):
-            chunk_index += 1
-            if chunk_index < len(chunks):
-                diff = size - len(window)
-                window += chunks[chunk_index][:diff]
-                chunk_pt = diff
-
-        yield window
-
-
 def fingerprint_transition_times(
-        fingerprint_chunks, sample_prints,
+        fingerprints, sample_prints,
         transition_sequence,
         error_threshold=DEFAULT_ERROR_THRESHOLD,
         time_threshold=DEFAULT_TIME_THRESHOLD,
-        window_size=40):
+        window_time=10.0):
+
     """identify indices in a fingerprint array where transition
     soundtracks start/stop.
 
@@ -110,15 +65,15 @@ def fingerprint_transition_times(
     ashift_frame_start = 0
 
     print("Finding transition times...")
-    for i, window in tqdm(enumerate(fingerprint_windows(
-            fingerprint_chunks, window_size))):
+    for i, window in tqdm(
+            enumerate(fingerprints.windows(window_time=window_time))):
 
-        error = window_error(window, sample_prints[expected_sample])
+        error = sample_prints[expected_sample].window_error(window)
 
         if ((transitioning and error > error_threshold) or
             ((not transitioning) and (error < error_threshold))):
             if ashift_frame_ct == 0:
-                ashift_frame_start = i * window_size
+                ashift_frame_start = i * fingerprints.window_size(window_time)
             ashift_frame_ct += 1
         else:
             ashift_frame_ct = 0
@@ -152,8 +107,6 @@ def intervals_to_keep(transition_times, cutting_pattern):
     transition_index = 0
     transition_times = [0] + transition_times + [-1]
 
-
-
     for segment in cutting_pattern:
         if transition_index + 1 >= len(transition_times):
             raise AutocutterException(
@@ -167,30 +120,6 @@ def intervals_to_keep(transition_times, cutting_pattern):
 
     return intervals
 
-def load_fingerprints(audio_files):
-    """load an array of audio files and compute their chromaprints
-    """
-    total_duration = 0.0
-    prints = []
-
-    samplerate = None
-    channels = None
-    print("Loading and fingerprinting audio files...")
-    for filename in tqdm(audio_files):
-        fingerprint, data = autocutter_utils.fingerprint_full_file(filename)
-        total_duration += data["duration"]
-        if ((channels is not None and data["channels"] != channels) or
-            (samplerate is not None and data["samplerate"] != samplerate)):
-            raise AutocutterException(
-                "Autocutter doesn't know how to handle input files "
-                "with different channelno or sample rate!"
-            )
-        else:
-            channels = data["channels"]
-            samplerate = data["samplerate"]
-        prints.append(fingerprint)
-
-    return (prints, total_duration, samplerate, channels)
 
 def write_transitions(input_file, outfile_name, transitions, start_index):
     """write the segments of the wav file in INPUT specified in
@@ -279,20 +208,15 @@ def get_transition_times(audio_files, transition_sequence, window_time=10.0):
         sample_file=cr_settings.DATA["sample_data_file"]
     )
 
-    (fingerprints, total_duration,
-     samplerate, channels) = load_fingerprints(audio_files)
-
-    total_print_len = sum([len(chunk) for chunk in fingerprints])
-
-    fingerprint_rate = total_print_len / total_duration
-    fingerprint_window_size = int(window_time * fingerprint_rate)
+    #TODO: find out how to import the class directly
+    fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, transition_sequence,
-        window_size=fingerprint_window_size
+        window_time=window_time
     )
 
-    pcm_transitions = [int(samplerate * index / fingerprint_rate)
+    pcm_transitions = [fingerprints.index_to_pcm(index)
                        for index in fp_transitions]
 
     return pcm_transitions
@@ -356,18 +280,12 @@ def get_autocut_errors(audio_files, window_time=10.0):
         sample_file=cr_settings.DATA["sample_data_file"]
     )
 
-    (fingerprints, total_duration,
-     _, _) = load_fingerprints(audio_files)
-
-    total_len = sum([len(chunk) for chunk in fingerprints])
-
-    fingerprint_rate = total_len / total_duration
-    window_size = int(window_time * fingerprint_rate)
+    fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)
 
     errors = []
-    for window in tqdm(fingerprint_windows(fingerprints, window_size)):
+    for window in tqdm(fingerprints.windows(window_time=window_time)):
 
-        error = min([window_error(window, spr)
+        error = min([spr.window_error(window)
                      for spr in sample_prints.values()])
         errors.append(error)
 
