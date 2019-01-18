@@ -181,9 +181,12 @@ def try_autocut(filepaths, output,
                                       debug=debug,
                                       merge_segments=merge_segments)
     except autocutter.AutocutterException as e:
-        #TODO prompt user to see if they still want output if autocut fails
-        print("Autocutter failed. Merging uncut audio...")
-        outfiles = [media_utils.merge_audio_files(filepaths, output)]
+        #TODO this behavior should be customizable
+        if not debug:
+            print("Autocutter failed. Merging uncut audio...")
+            outfiles = [media_utils.merge_audio_files(filepaths, output)]
+        else:
+            raise e
 
     return outfiles
 

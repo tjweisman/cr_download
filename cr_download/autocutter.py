@@ -1,5 +1,12 @@
+"""autocutter.py
+
+Tools to automatically cut one or more .wav files representing a
+single Critical Role episode into segments, based on detected
+transitions in the audio sequence.
+
+"""
+
 from __future__ import print_function
-from future.utils import iteritems
 from builtins import dict
 
 import os
@@ -26,10 +33,11 @@ DEFAULT_ERROR_THRESHOLD = 0.22
 DEFAULT_TIME_THRESHOLD = 2
 
 class AutocutterException(Exception):
-    pass
+    """exception thrown when there are problems preventing an audio file
+    from being autocut, e.g. if the detected transitions in the audio
+    file don't conform to the pattern the autocutter expects.
 
-class AudioException(Exception):
-    pass
+    """
 
 def window_error(window_print, sample_print, check_high_bits=True):
     """find minimum pct bit error for a short fingerprint segment compared
@@ -64,21 +72,22 @@ def fingerprint_windows(chunks, size):
     chunk_index = 0
     chunk_pt = 0
 
-    if chunk_index < len(chunks):
+    while chunk_index < len(chunks):
         window = chunks[chunk_index][chunk_pt:chunk_pt + size]
         chunk_pt += size
-        if len(window) < size and chunk_index + 1 < len(chunks):
-            diff = size - len(window)
-            window += chunks[1 + chunk_index][:diff]
+        if chunk_pt >= len(chunks[chunk_index]):
             chunk_index += 1
-            chunk_pt = diff
+            if chunk_index < len(chunks):
+                diff = size - len(window)
+                window += chunks[chunk_index][:diff]
+                chunk_pt = diff
 
         yield window
 
 
 def fingerprint_transition_times(
         fingerprint_chunks, sample_prints,
-        transition_sequence=None,
+        transition_sequence,
         error_threshold=DEFAULT_ERROR_THRESHOLD,
         time_threshold=DEFAULT_TIME_THRESHOLD,
         window_size=40):
@@ -91,11 +100,6 @@ def fingerprint_transition_times(
     segments of the array which lie between transition soundtracks
     (and are marked to be kept by CUTTING_PATTERN).
     """
-
-    if transition_sequence is None:
-        transition_sequence = cr_settings.DATA["audio_sequences"][
-            cr_settings.DATA["default_audio_sequence"]
-        ]
 
     transition_indices = []
     sequence = deque(transition_sequence)
@@ -136,14 +140,19 @@ def fingerprint_transition_times(
     return transition_indices
 
 def intervals_to_keep(transition_times, cutting_pattern):
+    """convert a sequence of transition timestamps into a sequence of
+    timestamp intervals to retain when cutting an episode.
+
+    cutting_pattern: an array of CUT/KEEP values, indicating whether
+    to cut or keep the interval between each pair of consecutive
+    timestamps
+
+    """
     intervals = []
     transition_index = 0
     transition_times = [0] + transition_times + [-1]
 
-    if cutting_pattern is None:
-        cutting_pattern = cr_settings.DATA["cutting_sequences"][
-            cr_settings.DATA["default_cutting_sequence"]
-        ]
+
 
     for segment in cutting_pattern:
         if transition_index + 1 >= len(transition_times):
@@ -172,7 +181,7 @@ def load_fingerprints(audio_files):
         total_duration += data["duration"]
         if ((channels is not None and data["channels"] != channels) or
             (samplerate is not None and data["samplerate"] != samplerate)):
-            raise AudioException(
+            raise AutocutterException(
                 "Autocutter doesn't know how to handle input files "
                 "with different channelno or sample rate!"
             )
@@ -219,8 +228,10 @@ def write_transitions(input_file, outfile_name, transitions, start_index):
 def recut_files(input_files, output_dir, episode_segments):
     """Cut out unwanted portions of an array of audio files.
 
-    EPISODE_SEGMENTS is a dictionary of portions to cut the episode up
-    into, indexed by the output filename of each segment.
+    EPISODE_SEGMENTS is a sequence of tuples, indicating portions to
+    cut the episode up into, of the form (part_name, intervals). I
+    should probably have an "episode segment" class or something
+    instead.
 
     Each value in the dictionary is an array of intervals belonging to
     that segment.
@@ -230,10 +241,10 @@ def recut_files(input_files, output_dir, episode_segments):
     """
     start_index = 0
 
-    for name in episode_segments:
+    for name, _ in episode_segments:
         os.mkdir(os.path.join(output_dir, os.path.basename(name)))
 
-    edited_files = {name:[] for name in episode_segments}
+    edited_files = {name:[] for name, _ in episode_segments}
 
     for infile in tqdm(input_files):
         outfile_basename = media_utils.change_ext(
@@ -254,12 +265,16 @@ def recut_files(input_files, output_dir, episode_segments):
         start_index += input_audio.getnframes()
         input_audio.close()
 
-    for output, contents in edited_files.iteritems():
+    for output, contents in edited_files.items():
         media_utils.merge_audio_files(contents, output)
 
     return list(edited_files)
 
-def get_transition_times(audio_files, window_time=10.0):
+def get_transition_times(audio_files, transition_sequence, window_time=10.0):
+    """get a sequence timestamps for points in audio files where
+    transitions are found.
+
+    """
     sample_prints = sample_fingerprint.load_prints(
         sample_file=cr_settings.DATA["sample_data_file"]
     )
@@ -273,7 +288,7 @@ def get_transition_times(audio_files, window_time=10.0):
     fingerprint_window_size = int(window_time * fingerprint_rate)
 
     fp_transitions = fingerprint_transition_times(
-        fingerprints, sample_prints,
+        fingerprints, sample_prints, transition_sequence,
         window_size=fingerprint_window_size
     )
 
@@ -283,7 +298,9 @@ def get_transition_times(audio_files, window_time=10.0):
     return pcm_transitions
 
 
-def autocut(audio_files, output_file, cutting_sequence="default",
+def autocut(audio_files, output_file,
+            cutting_sequence=None,
+            transition_sequence=None,
             debug=False, merge_segments=False):
     """automatically edit the array of audio files to exclude transitions
     and specific segments between them.
@@ -295,20 +312,29 @@ def autocut(audio_files, output_file, cutting_sequence="default",
     returns the name(s) of the created file(s).
     """
 
+    if cutting_sequence is None:
+        cutting_sequence = cr_settings.DATA["default_cutting_sequence"]
+
+    if transition_sequence is None:
+        transition_sequence = cr_settings.DATA["default_audio_sequence"]
+
     cutting_pattern = cr_settings.DATA["cutting_sequences"].get(
-        cutting_sequence
+        cutting_sequence)
+    audio_sequence = cr_settings.DATA["audio_sequences"].get(
+        transition_sequence)
+
+    pcm_intervals = intervals_to_keep(
+        get_transition_times(audio_files, audio_sequence),
+        cutting_pattern
     )
 
-    pcm_intervals = intervals_to_keep(get_transition_times(audio_files),
-                                      cutting_pattern)
-
     if merge_segments:
-        episode_segments = {output_file:pcm_intervals}
+        episode_segments = [(output_file, pcm_intervals)]
     else:
-        episode_segments = {
-            output_file.replace("*",str(i)):[interval]
+        episode_segments = [
+            (output_file.replace("*", str(i)), [interval])
             for i, interval in enumerate(pcm_intervals)
-        }
+        ]
 
     tmpdir = tempfile.mkdtemp()
     try:

@@ -1,0 +1,6 @@
+I don't write unit tests, but here are things I should make sure my
+unit tests (eventually) include:
+
+- keeping beginning/end of episode audio
+- autocut_merge
+- regular merge
