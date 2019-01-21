@@ -17,7 +17,7 @@ class SampleFingerprint:
     transition soundtracks
 
     """
-    def __init__(self, fingerprint, mask = MASK):
+    def __init__(self, fingerprint, mask=MASK):
         self.fingerprint = fingerprint
         self.mask = mask
         masked_prints = [fprint & mask for fprint in fingerprint]
@@ -55,7 +55,7 @@ class SampleFingerprint:
 
         return min(errs)
 
-def load_prints(mask = MASK, sample_file = None):
+def load_prints(mask=MASK, sample_file=None):
     """Load transition soundtrack fingerprint data from file(s).
 
     If SAMPLE_FILE is specified, this function tries to load
@@ -98,7 +98,7 @@ def load_prints(mask = MASK, sample_file = None):
 
     shutil.rmtree(tmpdir)
 
-    if sample_file != None:
+    if sample_file is not None:
         print(("Writing fingerprints to {}...".format(pickle_path)))
         with open(pickle_path, "wb") as pfi:
             pickle.dump(prints, pfi)

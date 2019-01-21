@@ -205,7 +205,7 @@ def download_vods(ep_title, to_download, dst_dir):
     video_base = media_utils.change_ext(ep_title, "")
     for i, vod in enumerate(to_download):
         filename = os.path.join(dst_dir, "{}{:02}.mp4".format(video_base, i))
-        twitch_download.dload_ep_video(vod, filename)
+        twitch_download.download_video(vod, filename)
         video_files.append(filename)
 
     return video_files

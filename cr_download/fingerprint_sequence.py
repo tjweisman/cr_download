@@ -76,10 +76,10 @@ class FingerprintSequence:
         """
         return int(self.samplerate * index / self.fingerprint_rate)
 
-def get_cache_filename(audio_files):
+def _get_cache_filename(audio_files):
     return hashlib.md5("".join(audio_files).encode("utf-8")).hexdigest()
 
-def load_pickled_fingerprints(pickle_filename):
+def _load_pickled_fingerprints(pickle_filename):
     fprints = None
 
     try:
@@ -94,12 +94,18 @@ def load_pickled_fingerprints(pickle_filename):
     return fprints
 
 def load_fingerprints(audio_files, use_cache=False):
+    """load a fingerprint sequence from an array of audio files.
+
+    if use_cache is specified, try to load the sequence from a pickle
+    in the config directory first.
+
+    """
     fingerprints = None
     if use_cache:
         cache_file = os.path.join(cr_settings.CONFIG_DIR,
                                   cr_settings.DATA["fingerprint_cache_dir"],
-                                  get_cache_filename(audio_files))
-        fingerprints = load_pickled_fingerprints(cache_file)
+                                  _get_cache_filename(audio_files))
+        fingerprints = _load_pickled_fingerprints(cache_file)
 
     if fingerprints is None:
         fingerprints = FingerprintSequence(audio_files)

@@ -12,7 +12,6 @@ import os
 import re
 import subprocess
 import shlex
-import json
 
 import requests
 
@@ -20,28 +19,34 @@ from . import cr_settings
 
 CONFIG_FILENAME = ".streamlinkconfig"
 
-CLIENT_ID="ignduriqallck9hugiw15zfaqdvgwc"
-GANDS_ID="36619809"
+CLIENT_ID = "ignduriqallck9hugiw15zfaqdvgwc"
+GANDS_ID = "36619809"
 
-headers = {"Client-ID" : CLIENT_ID,
+HEADERS = {"Client-ID" : CLIENT_ID,
            "Accept"    : "application/vnd.twitchtv.v5+json"}
 
 def get_gands_id():
-    #currently not needed, since the G&S ID has already been retrieved
-    #and hard-coded into the application
+    """Retrieve the ID of the Geek & Sundry Twitch channel
+
+    currently not needed, since the G&S ID has already been retrieved
+    and hard-coded into the application
+
+    """
     params = {"login":"geekandsundry"}
-    r = requests.get("https://api.twitch.tv/kraken/users",
-                     headers=headers, params=params)
-    return r.json()["users"][0]["_id"]
+    response = requests.get("https://api.twitch.tv/kraken/users",
+                            headers=HEADERS, params=params)
+    return response.json()["users"][0]["_id"]
 
 def get_vod_list(cr_filter=None, limit=10):
-    #get JSON array of past broadcast VODs on the G&S channel, most
-    #recent first
+    """get JSON array of past broadcast VODs on the G&S channel, most
+    recent first
+
+    """
     limit = max(min(limit, 100), 1)
     params = {"broadcast_type":"archive", "limit":str(limit)}
     url = "https://api.twitch.tv/kraken/channels/{}/videos".format(GANDS_ID)
-    r = requests.get(url, headers=headers,params=params)
-    vods = r.json()["videos"]
+    response = requests.get(url, headers=HEADERS, params=params)
+    vods = response.json()["videos"]
 
     if cr_filter is not None:
         vods = [vod for vod in vods if re.match(cr_filter, vod["title"],
@@ -49,10 +54,15 @@ def get_vod_list(cr_filter=None, limit=10):
 
     return vods
 
-def get_titles(video_list):
-    return [video["title"] for video in video_list]
+def download_video(video, name):
+    """download a twitch video using streamlink.
 
-def dload_ep_video(video, name):
+    video: a dictionary object, matching the format of that
+    returned by get_vod_list.
+
+    name: the filename to save the video under
+
+    """
     video_url = "twitch.tv/videos/" + video["_id"][1:]
 
     config_file = os.path.join(cr_settings.CONFIG_DIR, CONFIG_FILENAME)
