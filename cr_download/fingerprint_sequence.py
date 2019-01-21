@@ -3,9 +3,14 @@
 handle fingerprint data for a set of audio files
 """
 
+import os
+import hashlib
+import pickle
+
 from tqdm import tqdm
 
-import autocutter_utils
+from . import cr_settings
+from . import autocutter_utils
 
 class FingerprintException(Exception):
     pass
@@ -70,3 +75,37 @@ class FingerprintSequence:
         """convert the index of a fingerprint to a pcm index
         """
         return int(self.samplerate * index / self.fingerprint_rate)
+
+def get_cache_filename(audio_files):
+    return hashlib.md5("".join(audio_files).encode("utf-8")).hexdigest()
+
+def load_pickled_fingerprints(pickle_filename):
+    fprints = None
+
+    try:
+        with open(pickle_filename, "rb") as pfi:
+            fprints = pickle.load(pfi)
+            print("Loaded fingerprints from {}.".format(
+                pickle_filename))
+    except IOError:
+        print("Could not open fingerprints from {}.".format(
+            pickle_filename))
+
+    return fprints
+
+def load_fingerprints(audio_files, use_cache=False):
+    fingerprints = None
+    if use_cache:
+        cache_file = os.path.join(cr_settings.CONFIG_DIR,
+                                  cr_settings.DATA["fingerprint_cache_dir"],
+                                  get_cache_filename(audio_files))
+        fingerprints = load_pickled_fingerprints(cache_file)
+
+    if fingerprints is None:
+        fingerprints = FingerprintSequence(audio_files)
+
+    if use_cache:
+        with open(cache_file, "wb") as pfi:
+            pickle.dump(fingerprints, pfi)
+
+    return fingerprints

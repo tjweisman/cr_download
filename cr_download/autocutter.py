@@ -20,9 +20,9 @@ from tqdm import tqdm
 from . import media_utils
 from . import cr_settings
 
-from . import autocutter_utils
 from . import sample_fingerprint
 from . import fingerprint_sequence
+from . import wav_sequence
 
 CUT = "C"
 KEEP = "K"
@@ -31,6 +31,7 @@ DEBUG = False
 
 DEFAULT_ERROR_THRESHOLD = 0.22
 DEFAULT_TIME_THRESHOLD = 2
+
 
 class AutocutterException(Exception):
     """exception thrown when there are problems preventing an audio file
@@ -120,40 +121,6 @@ def intervals_to_keep(transition_times, cutting_pattern):
 
     return intervals
 
-
-def write_transitions(input_file, outfile_name, transitions, start_index):
-    """write the segments of the wav file in INPUT specified in
-    TRANSITIONS to a new wav file.
-
-    START_INDEX specifies the offset to use for the transitions.
-
-    """
-    total_written = 0
-
-    num_frames = input_file.getnframes()
-    #FIXME: DON'T USE TELL, THIS IS IMPLEMENTATION DEPENDENT
-    current = input_file.tell()
-    clamped_transitions = [
-        (autocutter_utils.clamp(start - start_index, 0, num_frames),
-         autocutter_utils.clamp(end - start_index, 0, num_frames))
-        for start, end in transitions
-    ]
-
-    output_file = wave.open(outfile_name, "wb")
-    output_file.setparams(input_file.getparams())
-
-    for start, end in clamped_transitions:
-        #TODO: use a fixed-size buffer so we don't read a massive array
-        input_file.readframes(start - current)
-        #TODO: use a fixed-size buffer and handle the case end = -1
-        output_file.writeframes(input_file.readframes(end - start))
-        total_written += end - start
-        current = end
-
-    output_file.close()
-
-    return total_written
-
 def recut_files(input_files, output_dir, episode_segments):
     """Cut out unwanted portions of an array of audio files.
 
@@ -162,45 +129,43 @@ def recut_files(input_files, output_dir, episode_segments):
     should probably have an "episode segment" class or something
     instead.
 
-    Each value in the dictionary is an array of intervals belonging to
-    that segment.
+    Each the second value in the tuple is an array of intervals
+    belonging to that segment.
 
     return the names of the audio files created.
 
     """
-    start_index = 0
 
-    for name, _ in episode_segments:
-        os.mkdir(os.path.join(output_dir, os.path.basename(name)))
+    edited_files = []
 
-    edited_files = {name:[] for name, _ in episode_segments}
+    input_audio = wav_sequence.open(input_files)
+    current_frame = 0
+    print("recutting files...")
+    #wrap the wav_sequence in a progress bar somehow?
+    for name, intervals in tqdm(episode_segments):
+        output_name = os.path.join(
+            output_dir,
+            media_utils.change_ext(os.path.basename(name), ".wav"))
 
-    for infile in tqdm(input_files):
-        outfile_basename = media_utils.change_ext(
-            os.path.basename(infile),
-            ".wav"
-        )
-        input_audio = wave.open(infile, "rb")
-        for name, transitions in episode_segments:
-            outfile_name = os.path.join(output_dir,
-                                        os.path.basename(name),
-                                        outfile_basename)
+        edited_files.append(output_name)
 
-            frames = write_transitions(input_audio, outfile_name,
-                                       transitions, start_index)
+        output_file = wave.open(output_name, "wb")
+        output_file.setparams(input_audio.getparams())
+        for start, end in intervals:
+            input_audio.skip_frames(start - current_frame)
+            if end == -1:
+                input_audio.copy_to_end(output_file)
+                break
+            else:
+                input_audio.copy_frames(end - start, output_file)
+                current_frame = end
 
-            if frames > 0:
-                edited_files[name].append(outfile_name)
-        start_index += input_audio.getnframes()
-        input_audio.close()
+    input_audio.close()
 
-    for output, contents in edited_files.items():
-        media_utils.merge_audio_files(contents, output)
+    return edited_files
 
-    return list(edited_files)
-
-def get_transition_times(audio_files, transition_sequence, window_time=10.0):
-    """get a sequence timestamps for points in audio files where
+def get_transition_times(audio_files, transition_sequence, window_time=10):
+    """get a sequence of timestamps for points in audio files where
     transitions are found.
 
     """
@@ -208,8 +173,10 @@ def get_transition_times(audio_files, transition_sequence, window_time=10.0):
         sample_file=cr_settings.DATA["sample_data_file"]
     )
 
+    print("Generating audio fingerprints...")
     #TODO: find out how to import the class directly
-    fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)
+    fingerprints = fingerprint_sequence.load_fingerprints(
+        audio_files, use_cache=True)
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, transition_sequence,

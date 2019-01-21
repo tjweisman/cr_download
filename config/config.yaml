@@ -4,7 +4,7 @@ sample_audio_files:
   c2_intro_2 : Critical Role - Mighty Nein Intro.mp3
   dndbeyond : DD Beyond Official Theme.mp3
 
-audio_sequences: 
+audio_sequences:
         campaign_2_original: [overture, c2_intro_1, dndbeyond, overture, overture]
         campaign_2_newtheme: [overture, c2_intro_2, dndbeyond, overture, overture]
         campaign_2_doubletheme: [overture, c2_intro_2, c2_intro_2, dndbeyond, overture, overture]
@@ -15,7 +15,7 @@ cutting_sequences:
         cut_intro_double: [C, C, C, C, C, C, K, C, C, C, K, C]
 
 sample_data_file: sample_fingerprints
-
+fingerprint_cache_dir: .cache
 
 default_audio_sequence: campaign_2_newtheme
 default_cutting_sequence: cut_intro
