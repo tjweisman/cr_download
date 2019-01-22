@@ -176,7 +176,7 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
     print("Generating audio fingerprints...")
     #TODO: find out how to import the class directly
     fingerprints = fingerprint_sequence.load_fingerprints(
-        audio_files, use_cache=True)
+        audio_files, use_cache=False)
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, transition_sequence,
