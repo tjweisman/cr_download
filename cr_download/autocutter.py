@@ -143,22 +143,23 @@ def recut_files(input_files, output_dir, episode_segments):
     print("recutting files...")
     #wrap the wav_sequence in a progress bar somehow?
     for name, intervals in tqdm(episode_segments):
-        output_name = os.path.join(
+        wavfile_name = os.path.join(
             output_dir,
             media_utils.change_ext(os.path.basename(name), ".wav"))
 
-        edited_files.append(output_name)
-
-        output_file = wave.open(output_name, "wb")
-        output_file.setparams(input_audio.getparams())
+        output_wav = wave.open(wavfile_name, "wb")
+        output_wav.setparams(input_audio.getparams())
         for start, end in intervals:
             input_audio.skip_frames(start - current_frame)
             if end == -1:
-                input_audio.copy_to_end(output_file)
+                input_audio.copy_to_end(output_wav)
                 break
             else:
-                input_audio.copy_frames(end - start, output_file)
+                input_audio.copy_frames(end - start, output_wav)
                 current_frame = end
+
+        media_utils.ffmpeg_convert(wavfile_name, name)
+        edited_files.append(name)
 
     input_audio.close()
 
@@ -174,9 +175,8 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
     )
 
     print("Generating audio fingerprints...")
-    #TODO: find out how to import the class directly
     fingerprints = fingerprint_sequence.load_fingerprints(
-        audio_files, use_cache=False)
+        audio_files, use_cache=True)
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, transition_sequence,
@@ -262,11 +262,14 @@ def autocut_file(input_file, output_file, debug=False):
     """helper function (not used) to autocut a single audio file
 
     """
+    edited_files = []
     tmpdir = tempfile.mkdtemp()
     try:
         audio_files = media_utils.mp4_to_audio_segments(
             input_file, tmpdir, ".wav")
-        autocut(audio_files, output_file)
+        edited_files = autocut(audio_files, output_file)
     finally:
         if not debug and not DEBUG:
             shutil.rmtree(tmpdir)
+
+    return edited_files

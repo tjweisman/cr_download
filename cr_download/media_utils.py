@@ -68,8 +68,8 @@ def mp4_to_audio_segments(video_file, output_dir, segment_fmt):
 
     return split_files
 
-def mp4_to_audio_file(video_file, output_file):
+def ffmpeg_convert(input_file, output_file):
     """wrapper function for ffmpeg video to audio conversion.
     """
-    subprocess.call(["ffmpeg", "-i", video_file, output_file])
+    subprocess.call(["ffmpeg", "-i", input_file, output_file])
     return output_file

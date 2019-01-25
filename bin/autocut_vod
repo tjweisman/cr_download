@@ -12,9 +12,8 @@ from argparse import ArgumentParser
 import tempfile
 import shutil
 
-from cr_download import autocutter
-from cr_download import media_utils
 from cr_download import cli_utils
+from cr_download import cr_convert
 
 def _init_args():
     parser = ArgumentParser(
@@ -25,12 +24,19 @@ def _init_args():
     parser.add_argument("filenames", nargs="+",
                         help="""filename(s) of .mp4 files to autocut""")
 
+    parser.add_argument("--autocut-ignore-errors", action="store_true",
+                        help="""On autocut errors, just merge output into a
+                        single audio file""")
+
     parser.add_argument("-d", "--debug", dest="debug", action="store_true",
                         help="debug mode (keep temporary files)")
 
     parser.add_argument("-m", "--merge", action="store_true",
-                        dest="autocut_merge", help="""merge autocut
-                        audio into a single file""")
+                        help="merge all VODs into a single episode")
+
+    parser.add_argument("-M", "--autocut-merge", action="store_true",
+                        help="""merge autocut audio into a single
+                        file""")
 
     parser.add_argument("-n", "--no-autocut", action="store_false",
                         dest="autocut", help="""Don't autocut, just
@@ -54,27 +60,24 @@ def _init_args():
 
 
 def _main(arguments):
-    vod = {"title":""}
-    title = cli_utils.prompt_title(vod, arguments.autocut)
+    split_episodes = (arguments.autocut and not arguments.autocut_merge)
+    vods = {}
+
+    if arguments.merge:
+        title = cli_utils.prompt_title(multiple_parts=split_episodes)
+        vods[title] = arguments.filenames
+    else:
+        for filename in arguments.filenames:
+            title = cli_utils.prompt_title(multiple_parts=split_episodes)
+            vods[title] = [filename]
+
     tmpdir = tempfile.mkdtemp()
     try:
-        episodes = []
-        for filename in arguments.filenames:
-            episodes.append(
-                media_utils.mp4_to_audio_segments(
-                    filename, tmpdir,
-                    segment_fmt=".wav"))
-
-        audio_files = []
-        for episode_segments in episodes:
-            audio_files += autocutter.autocut(
-                episode_segments, title,
-                arguments.cutting_sequence,
-                merge_segments=arguments.autocut_merge,
-                debug=arguments.debug)
-
-            audio_files.append(media_utils.merge_audio_files(episode_segments, title))
-
+        audio_files = {
+            title: cr_convert.videos_to_episode_audio(
+                video_files, title, arguments, tmpdir)
+            for title, video_files in vods.items()
+        }
         print("Output audio files to:\n" + "\n".join(sorted(list(audio_files))))
     finally:
         if not arguments.debug:

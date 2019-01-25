@@ -90,7 +90,7 @@ def load_prints(mask=MASK, sample_file=None):
     for key, filename in sample_audio_files.items():
         wav_file = os.path.join(tmpdir,
                                 media_utils.change_ext(filename, ".wav"))
-        media_utils.mp4_to_audio_file(
+        media_utils.ffmpeg_convert(
             os.path.join(sample_dir, filename), wav_file
         )
         fingerprints, _ = autocutter_utils.fingerprint_full_file(wav_file)

@@ -10,7 +10,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import input
 
-import re
 import sys
 from datetime import timedelta
 from argparse import ArgumentParser
@@ -18,10 +17,10 @@ import tempfile
 import os
 import shutil
 
-from cr_download import autocutter
 from cr_download import twitch_download
 from cr_download import media_utils
 from cr_download import cli_utils
+from cr_download import cr_convert
 
 DEBUG = False
 
@@ -39,6 +38,10 @@ def init_args():
     parser.add_argument("-a", dest="autocut", action="store_true",
                         help="""automatically cut transitions/
                         breaks from episode""")
+
+    parser.add_argument("--autocut-ignore-errors", action="store_true",
+                        help="""On autocut errors, just merge output into a
+                        single audio file""")
 
     parser.add_argument("-c", dest="cleanup", action="store_true",
                         help="""keep downloaded video files in a temporary
@@ -98,33 +101,6 @@ def init_args():
     return parser.parse_args(sys.argv[1:])
 
 
-def try_autocut(filepaths, output,
-                cutting_sequence="default",
-                merge_segments=False,
-                debug=False):
-    """automatically edit a list of audio files
-
-    OUTPUT is either an audio file name or a substitutable pattern if
-    multiple audio files are to be created (i.e. when MERGE_SEGMENTS
-    is not specified).
-
-    """
-    try:
-        print("Attempting to autocut files...")
-        outfiles = autocutter.autocut(filepaths, output,
-                                      cutting_sequence=cutting_sequence,
-                                      debug=debug,
-                                      merge_segments=merge_segments)
-    except autocutter.AutocutterException as e:
-        #TODO this behavior should be customizable
-        if not debug:
-            print("Autocutter failed. Merging uncut audio...")
-            outfiles = [media_utils.merge_audio_files(filepaths, output)]
-        else:
-            raise e
-
-    return outfiles
-
 def _upload_file(title):
     from cr_download import drive_upload
 
@@ -132,12 +108,12 @@ def _upload_file(title):
     print((ostr.format(title)))
     drive_upload.single_xfer_upload(title)
 
-def download_vods(ep_title, to_download, dst_dir):
+def download_vods(base_name, to_download, dst_dir):
     """Download video files for the vods specified in TO_DOWNLOAD.
 
     """
     video_files = []
-    video_base = media_utils.change_ext(ep_title, "")
+    video_base = media_utils.change_ext(base_name, "")
     for i, vod in enumerate(to_download):
         filename = os.path.join(dst_dir, "{}{:02}.mp4".format(video_base, i))
         twitch_download.download_video(vod, filename)
@@ -145,36 +121,6 @@ def download_vods(ep_title, to_download, dst_dir):
 
     return video_files
 
-def videos_to_episode_audio(video_files, title, arguments, tmpdir):
-    """convert all of the files in VIDEO_FILES to one or more audio files.
-
-    if arguments.autocut is specified, run the autocutting algorithm
-    on each episode before outputting. if, in addition, autocut_merge
-    is specified, the different parts of the (autocut) episode are
-    merged into a single audio file.
-
-    return the name(s) of the audio file(s) created.
-
-    """
-
-    episodes = []
-    for filename in video_files:
-        episodes.append(
-            media_utils.mp4_to_audio_segments(
-                filename, tmpdir,
-                segment_fmt=".wav"))
-
-    output_files = []
-    for episode_segments in episodes:
-        if arguments.autocut:
-            output_files += try_autocut(episode_segments, title,
-                                        arguments.cutting_sequence,
-                                        arguments.autocut_merge,
-                                        debug=arguments.debug)
-        else:
-            output_files.append(media_utils.merge_audio_files(episode_segments, title))
-
-    return output_files
 
 def vod_index_select(vods, split_episodes):
     to_download = {}
@@ -261,7 +207,8 @@ def _main(arguments):
         print("Converting vod(s) to audio...")
 
         audio_files = {
-            title: videos_to_episode_audio(video_files, title, arguments, tmpdir)
+            title: cr_convert.videos_to_episode_audio(
+                video_files, title, arguments, tmpdir)
             for title, video_files in episode_files.items()
         }
 

@@ -22,10 +22,8 @@ def suggest_filename(title, multiple_parts=False):
             campaign = match.group(2)
         episode = int(match.group(4))
         suggestion = "c{0}ep{1:03d}{2}.mp3".format(campaign, episode, wildcard)
-    elif not multiple_parts:
-        suggestion = "tmp_part*.mp3"
     else:
-        suggestion = "tmp.mp3"
+        suggestion = "tmp{}.mp3".format(wildcard)
 
     return suggestion
 
@@ -42,12 +40,12 @@ def confirm(prompt):
     return False
 
 
-def prompt_title(vod, multiple_parts=False):
+def prompt_title(vod_title="", multiple_parts=False):
     """Ask the user to provide a title (or title pattern) for a vod.
 
     title_format should contain exactly one '*' (later substituted for).
     """
-    ep_title = suggest_filename(vod["title"], multiple_parts)
+    ep_title = suggest_filename(vod_title, multiple_parts)
     if multiple_parts:
         prompt_str = (
             "Enter titles to save vod segments under (default: {})".format(
