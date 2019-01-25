@@ -12,7 +12,9 @@ from argparse import ArgumentParser
 import tempfile
 import shutil
 
-from download_script import videos_to_episode_audio, prompt_title
+from cr_download import autocutter
+from cr_download import media_utils
+from cr_download import cli_utils
 
 def _init_args():
     parser = ArgumentParser(
@@ -53,12 +55,25 @@ def _init_args():
 
 def _main(arguments):
     vod = {"title":""}
-    title = prompt_title(vod, arguments.autocut)
+    title = cli_utils.prompt_title(vod, arguments.autocut)
     tmpdir = tempfile.mkdtemp()
     try:
+        episodes = []
+        for filename in arguments.filenames:
+            episodes.append(
+                media_utils.mp4_to_audio_segments(
+                    filename, tmpdir,
+                    segment_fmt=".wav"))
 
-        audio_files = videos_to_episode_audio(arguments.filenames, title,
-                                              arguments, tmpdir)
+        audio_files = []
+        for episode_segments in episodes:
+            audio_files += autocutter.autocut(
+                episode_segments, title,
+                arguments.cutting_sequence,
+                merge_segments=arguments.autocut_merge,
+                debug=arguments.debug)
+
+            audio_files.append(media_utils.merge_audio_files(episode_segments, title))
 
         print("Output audio files to:\n" + "\n".join(sorted(list(audio_files))))
     finally:

@@ -203,10 +203,10 @@ def autocut(audio_files, output_file,
     returns the name(s) of the created file(s).
     """
 
-    if cutting_sequence is None:
+    if cutting_sequence is None or cutting_sequence == "default":
         cutting_sequence = cr_settings.DATA["default_cutting_sequence"]
 
-    if transition_sequence is None:
+    if transition_sequence is None or transition_sequence == "default":
         transition_sequence = cr_settings.DATA["default_audio_sequence"]
 
     cutting_pattern = cr_settings.DATA["cutting_sequences"].get(

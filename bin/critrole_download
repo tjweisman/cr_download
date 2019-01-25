@@ -20,8 +20,8 @@ import shutil
 
 from cr_download import autocutter
 from cr_download import twitch_download
-from cr_download.autocutter_utils import valid_pattern
 from cr_download import media_utils
+from cr_download import cli_utils
 
 DEBUG = False
 
@@ -97,71 +97,6 @@ def init_args():
 
     return parser.parse_args(sys.argv[1:])
 
-def suggest_filename(title, multiple_parts=False):
-    """suggest a filename to save a Critical Role episode under, given the
-    title of its VOD.
-
-    If MULTIPLE_PARTS is specified, suggest a globbed format for
-    the filenames for multiple parts of the episode.
-
-    """
-    match = re.match(r".*Critical Role:? (Campaign (\d+):?)?,? Ep(isode)? ?(\d+).*",
-                     title, flags=re.I)
-    wildcard = ""
-    if multiple_parts:
-        wildcard = "_part*"
-    if match:
-        campaign = "1"
-        if match.group(2):
-            campaign = match.group(2)
-        episode = int(match.group(4))
-        suggestion = "c{0}ep{1:03d}{2}.mp3".format(campaign, episode, wildcard)
-    elif not multiple_parts:
-        suggestion = "tmp_part*.mp3"
-    else:
-        suggestion = "tmp.mp3"
-
-    return suggestion
-
-def confirm(prompt):
-    """Provide a Y/N prompt for the user, and continue prompting until Y/N
-    is input.
-
-    """
-    response = "X"
-    while response.strip().upper() not in ["Y", "N", ""]:
-        response = input(prompt + " [Y]/N ")
-        if response.strip().upper() in ["Y", ""]:
-            return True
-    return False
-
-
-def prompt_title(vod, multiple_parts=False):
-    """Ask the user to provide a title (or title pattern) for a vod.
-
-    title_format should contain exactly one '*' (later substituted for).
-    """
-    ep_title = suggest_filename(vod["title"], multiple_parts)
-    if multiple_parts:
-        prompt_str = (
-            "Enter titles to save vod segments under (default: {})".format(
-                ep_title))
-    else:
-        prompt_str = (
-            "Enter title to save vod under (default: {}): ".format(
-                ep_title))
-
-    invalid_title = True
-    while invalid_title:
-        title = input(prompt_str)
-        if not title.strip():
-            title = ep_title
-        invalid_title = multiple_parts and not valid_pattern(title)
-        if invalid_title:
-            print("Enter a title pattern containing exactly one '*'.")
-
-
-    return title
 
 def try_autocut(filepaths, output,
                 cutting_sequence="default",
@@ -213,9 +148,6 @@ def download_vods(ep_title, to_download, dst_dir):
 def videos_to_episode_audio(video_files, title, arguments, tmpdir):
     """convert all of the files in VIDEO_FILES to one or more audio files.
 
-    if arguments.merge is specified, treat each file in VIDEO_FILES as
-    a piece of a larger episode. Otherwise treat each file as an individual episode.
-
     if arguments.autocut is specified, run the autocutting algorithm
     on each episode before outputting. if, in addition, autocut_merge
     is specified, the different parts of the (autocut) episode are
@@ -250,7 +182,7 @@ def vod_index_select(vods, split_episodes):
                   " download any vods): ")
     try:
         if int(index) > 0 and int(index) <= len(vods):
-            title = prompt_title(vods[int(index) - 1],
+            title = cli_utils.prompt_title(vods[int(index) - 1],
                                  multiple_parts=split_episodes)
             to_download[title] = [vods[int(index) - 1]]
     except ValueError:
@@ -272,15 +204,15 @@ def vod_confirm_select(vods, merge_files, split_episodes):
         print("Possible CR Episode found: {}".format(vod["title"]))
         print("Length: {}".format(timedelta(seconds=int(vod["length"]))))
 
-        if confirm("Download vod?"):
+        if cli_utils.confirm("Download vod?"):
             if not merge_files:
-                title = prompt_title(vod, split_episodes)
+                title = cli_utils.prompt_title(vod, split_episodes)
                 to_download[title] = [vod]
             else:
                 episode_vods.append(vod)
 
     if merge_files and episode_vods:
-        title = prompt_title(episode_vods[0], split_episodes)
+        title = cli_utils.prompt_title(episode_vods[0], split_episodes)
         to_download[title] = episode_vods
 
     return to_download
