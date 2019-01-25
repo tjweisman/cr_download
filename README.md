@@ -19,16 +19,18 @@ episode to Google drive (mostly because my USB ports suck and I can't
 reliably transfer the audio to my phone over a wired connection, and
 Google Drive/WiFi is faster than Bluetooth).
 
-For usage help, run `python download_script.py -h`.
+For usage help, run `critrole_download -h` or `autocut_vod -h`.
 
 Setup
 ==========================
 
 1. Install required dependencies (see below)
 
-2. Copy the contents of the "config" directory into ~/.config/cr_download
+2. Run `python setup.py install`.
 
-3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
+3. Copy the contents of the "config" directory into ~/.config/cr_download
+
+4. Run `streamlink --twitch-oauth-authenticate` and copy the contents
 of the displayed page into the file
 `~/.config/cr_download/.streamlinkconfig` (you will need to create
 this file).
