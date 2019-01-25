@@ -19,14 +19,13 @@ episode to Google drive (mostly because my USB ports suck and I can't
 reliably transfer the audio to my phone over a wired connection, and
 Google Drive/WiFi is faster than Bluetooth).
 
-For usage help, run `critrole_download -h` or `autocut_vod -h`.
-
 Setup
 ==========================
 
 1. Install required dependencies (see below)
 
-2. Run `python setup.py install`.
+2. Run `python setup.py install` from the directory where you
+downloaded the repository
 
 3. Copy the contents of the "config" directory into ~/.config/cr_download
 
@@ -34,6 +33,18 @@ Setup
 of the displayed page into the file
 `~/.config/cr_download/.streamlinkconfig` (you will need to create
 this file).
+
+Usage
+==================================
+
+Run `critrole_download` (it should be added to your path after
+installation) to display a list of recent Geek & Sundry VODs. You may
+choose one (or more) to download and convert to audio.
+
+You can also run `autocut_vod FILENAME [FILENAME ...]` to run the
+autocutting tool on a local video file.
+
+For more usage help, run `critrole_download -h` or `autocut_vod -h`
 
 Dependencies:
 ==========================
@@ -57,4 +68,7 @@ Dependencies:
 TODO
 ============================
 
-- Streamline the "setup" process so it doesn't involve manual configuration
+- Streamline the "setup" process so it doesn't involve manual
+  configuration or manual installation of dependencies
+
+- Make autocutting rules more flexible
