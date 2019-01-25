@@ -2,3 +2,7 @@
 *.mp3
 *.wav
 test
+
+*.egg-info
+build
+dist
