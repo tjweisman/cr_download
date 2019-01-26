@@ -15,7 +15,7 @@ import shlex
 
 import requests
 
-from . import cr_settings
+from . import configuration
 
 CONFIG_FILENAME = ".streamlinkconfig"
 
@@ -65,7 +65,7 @@ def download_video(video, name):
     """
     video_url = "twitch.tv/videos/" + video["_id"][1:]
 
-    config_file = os.path.join(cr_settings.CONFIG_DIR, CONFIG_FILENAME)
+    config_file = os.path.join(configuration.CONFIG_DIR, CONFIG_FILENAME)
     cmd = "streamlink --config {} {} 360p -f -o {}".format(
         config_file, video_url, name)
     subprocess.call(shlex.split(cmd))

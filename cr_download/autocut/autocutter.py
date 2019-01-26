@@ -18,7 +18,7 @@ import wave
 from tqdm import tqdm
 
 from .. import media_utils
-from .. import cr_settings
+from .. import configuration
 
 from . import sample_fingerprint
 from . import fingerprint_sequence
@@ -171,12 +171,12 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
 
     """
     sample_prints = sample_fingerprint.load_prints(
-        sample_file=cr_settings.DATA["sample_data_file"]
+        sample_file=configuration.DATA["sample_data_file"]
     )
 
     print("Generating audio fingerprints...")
     fingerprints = fingerprint_sequence.load_fingerprints(
-        audio_files, use_cache=True)
+        audio_files, use_cache=False)
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, transition_sequence,
@@ -215,14 +215,14 @@ def autocut(audio_files, output_file,
     """
 
     if cutting_sequence is None or cutting_sequence == "default":
-        cutting_sequence = cr_settings.DATA["default_cutting_sequence"]
+        cutting_sequence = configuration.DATA["default_cutting_sequence"]
 
     if transition_sequence is None or transition_sequence == "default":
-        transition_sequence = cr_settings.DATA["default_audio_sequence"]
+        transition_sequence = configuration.DATA["default_audio_sequence"]
 
-    cutting_pattern = cr_settings.DATA["cutting_sequences"].get(
+    cutting_pattern = configuration.DATA["cutting_sequences"].get(
         cutting_sequence)
-    audio_sequence = cr_settings.DATA["audio_sequences"].get(
+    audio_sequence = configuration.DATA["audio_sequences"].get(
         transition_sequence)
 
     pcm_intervals = intervals_to_keep(
@@ -255,7 +255,7 @@ def get_autocut_errors(audio_files, window_time=10.0):
 
     """
     sample_prints = sample_fingerprint.load_prints(
-        sample_file=cr_settings.DATA["sample_data_file"]
+        sample_file=configuration.DATA["sample_data_file"]
     )
 
     fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)

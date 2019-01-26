@@ -9,7 +9,7 @@ import pickle
 
 from tqdm import tqdm
 
-from .. import cr_settings
+from .. import appdata
 from . import fingerprint_utils
 
 class FingerprintException(Exception):
@@ -77,19 +77,20 @@ class FingerprintSequence:
         return int(self.samplerate * index / self.fingerprint_rate)
 
 def _get_cache_filename(audio_files):
-    return hashlib.md5("".join(audio_files).encode("utf-8")).hexdigest()
+    basenames = [os.path.basename(afile) for afile in audio_files]
+    return hashlib.md5("".join(basenames).encode("utf-8")).hexdigest()
 
-def _load_pickled_fingerprints(pickle_filename):
+def _load_cached_fingerprints(filename):
     fprints = None
 
     try:
-        with open(pickle_filename, "rb") as pfi:
+        with appdata.open_cache_file(filename, "rb") as pfi:
             fprints = pickle.load(pfi)
             print("Loaded fingerprints from {}.".format(
-                pickle_filename))
-    except IOError:
+                appdata.cache_filename(filename)))
+    except(IOError, pickle.UnpicklingError, FileNotFoundError):
         print("Could not open fingerprints from {}.".format(
-            pickle_filename))
+            appdata.cache_filename(filename)))
 
     return fprints
 
@@ -102,16 +103,14 @@ def load_fingerprints(audio_files, use_cache=False):
     """
     fingerprints = None
     if use_cache:
-        cache_file = os.path.join(cr_settings.CONFIG_DIR,
-                                  cr_settings.DATA["fingerprint_cache_dir"],
-                                  _get_cache_filename(audio_files))
-        fingerprints = _load_pickled_fingerprints(cache_file)
+        cache_file = _get_cache_filename(audio_files)
+        fingerprints = _load_cached_fingerprints(cache_file)
 
     if fingerprints is None:
         fingerprints = FingerprintSequence(audio_files)
 
     if use_cache:
-        with open(cache_file, "wb") as pfi:
+        with appdata.open_cache_file(cache_file, "wb") as pfi:
             pickle.dump(fingerprints, pfi)
 
     return fingerprints

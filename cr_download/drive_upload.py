@@ -17,10 +17,10 @@ from apiclient.http import MediaFileUpload
 from oauth2client.file import Storage
 from progressbar import ProgressBar
 
-from . import cr_settings
+from . import configuration
 
 XFER_FOLDER_NAME = "xfer"
-CREDENTIALS_FILE = os.path.join(cr_settings.CONFIG_DIR, "drive_credentials.json")
+CREDENTIALS_FILE = os.path.join(configuration.CONFIG_DIR, "drive_credentials.json")
 
 def _get_service():
     """get Google Drive API service object (assume credentials are stored

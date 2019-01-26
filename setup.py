@@ -6,5 +6,10 @@ setup(
     scripts=["bin/critrole_download",
              "bin/autocut_vod"],
 
+    package_data={
+        '':['share/config.yaml',
+            'share/sound_files/*']
+    },
+
     author="Teddy Weisman"
 )
