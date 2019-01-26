@@ -33,13 +33,6 @@ def total_error(print1, print2):
                                                      print2)])
     return float(err) / (32 * min(len(print1), len(print2)))
 
-def valid_pattern(pattern):
-    """return true iff the given string can be used as a pattern of
-    filenames to save parts of a critical role episode as
-
-    """
-    return pattern.count("*") == 1
-
 def fingerprint_full_file(filename):
     """read an audio file and compute its full chromaprint
     """

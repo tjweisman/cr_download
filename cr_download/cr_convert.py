@@ -1,5 +1,5 @@
 from cr_download import media_utils
-from cr_download import autocutter
+from cr_download.autocut import autocutter
 
 def videos_to_episode_audio(video_files, title, arguments, tmpdir):
     """convert all of the files in VIDEO_FILES to one or more audio files.

@@ -6,9 +6,9 @@ import pickle
 import tempfile
 import shutil
 
-from . import media_utils
-from . import cr_settings
-from . import autocutter_utils
+from .. import media_utils
+from .. import cr_settings
+from . import fingerprint_utils
 
 MASK = 0xFF000000
 
@@ -21,7 +21,7 @@ class SampleFingerprint:
         self.fingerprint = fingerprint
         self.mask = mask
         masked_prints = [fprint & mask for fprint in fingerprint]
-        self.masked_prints_i = autocutter_utils.invert(masked_prints)
+        self.masked_prints_i = fingerprint_utils.invert(masked_prints)
         self.masked_prints_s = set(masked_prints)
 
     def __len__(self):
@@ -45,7 +45,7 @@ class SampleFingerprint:
                               for val in intersect])
 
         errs = [
-            autocutter_utils.total_error(
+            fingerprint_utils.total_error(
                 window_print, self.fingerprint[offset:])
             for offset in offsets
         ]
@@ -78,7 +78,7 @@ def load_prints(mask=MASK, sample_file=None):
             with open(pickle_path, "rb") as pfi:
                 prints = pickle.load(pfi)
             return prints
-        except IOError:
+        except Exception:
             print(("Could not open samples from {}. ".format(pickle_path)))
 
     print("Generating fingerprints...")
@@ -93,7 +93,7 @@ def load_prints(mask=MASK, sample_file=None):
         media_utils.ffmpeg_convert(
             os.path.join(sample_dir, filename), wav_file
         )
-        fingerprints, _ = autocutter_utils.fingerprint_full_file(wav_file)
+        fingerprints, _ = fingerprint_utils.fingerprint_full_file(wav_file)
         prints[key] = SampleFingerprint(fingerprints, mask)
 
     shutil.rmtree(tmpdir)

@@ -17,8 +17,8 @@ from collections import deque
 import wave
 from tqdm import tqdm
 
-from . import media_utils
-from . import cr_settings
+from .. import media_utils
+from .. import cr_settings
 
 from . import sample_fingerprint
 from . import fingerprint_sequence
@@ -188,6 +188,17 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
 
     return pcm_transitions
 
+def _get_episode_partname(episode_pattern, part_index):
+    if "*" in episode_pattern:
+        ep_name = episode_pattern.replace(
+            "*", "{:02d}".format(part_index), 1
+        )
+    else:
+        base, ext = os.path.splitext(episode_pattern)
+        ep_name = base + "_{:02d}".format(part_index) + ext
+
+    return ep_name
+
 
 def autocut(audio_files, output_file,
             cutting_sequence=None,
@@ -223,7 +234,7 @@ def autocut(audio_files, output_file,
         episode_segments = [(output_file, pcm_intervals)]
     else:
         episode_segments = [
-            (output_file.replace("*", str(i)), [interval])
+            (_get_episode_partname(output_file, i), [interval])
             for i, interval in enumerate(pcm_intervals)
         ]
 

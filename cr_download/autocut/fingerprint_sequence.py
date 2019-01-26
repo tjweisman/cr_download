@@ -9,8 +9,8 @@ import pickle
 
 from tqdm import tqdm
 
-from . import cr_settings
-from . import autocutter_utils
+from .. import cr_settings
+from . import fingerprint_utils
 
 class FingerprintException(Exception):
     pass
@@ -32,7 +32,7 @@ class FingerprintSequence:
         """load the FingerprintSequence from a sequence of audio files.
         """
         for filename in tqdm(audio_files):
-            fingerprint, data = autocutter_utils.fingerprint_full_file(filename)
+            fingerprint, data = fingerprint_utils.fingerprint_full_file(filename)
             self.duration += data["duration"]
             if ((self.channels is not None and
                  data["channels"] != self.channels) or

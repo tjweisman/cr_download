@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 import tempfile
 import shutil
 
-from cr_download import cli_utils
+from cr_download import cli
 from cr_download import cr_convert
 
 def _init_args():
@@ -64,11 +64,11 @@ def _main(arguments):
     vods = {}
 
     if arguments.merge:
-        title = cli_utils.prompt_title(multiple_parts=split_episodes)
+        title = cli.prompt_title(multiple_parts=split_episodes)
         vods[title] = arguments.filenames
     else:
         for filename in arguments.filenames:
-            title = cli_utils.prompt_title(multiple_parts=split_episodes)
+            title = cli.prompt_title(multiple_parts=split_episodes)
             vods[title] = [filename]
 
     tmpdir = tempfile.mkdtemp()

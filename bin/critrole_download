@@ -19,7 +19,7 @@ import shutil
 
 from cr_download import twitch_download
 from cr_download import media_utils
-from cr_download import cli_utils
+from cr_download import cli
 from cr_download import cr_convert
 
 DEBUG = False
@@ -128,7 +128,7 @@ def vod_index_select(vods, split_episodes):
                   " download any vods): ")
     try:
         if int(index) > 0 and int(index) <= len(vods):
-            title = cli_utils.prompt_title(vods[int(index) - 1],
+            title = cli.prompt_title(vods[int(index) - 1],
                                  multiple_parts=split_episodes)
             to_download[title] = [vods[int(index) - 1]]
     except ValueError:
@@ -150,15 +150,15 @@ def vod_confirm_select(vods, merge_files, split_episodes):
         print("Possible CR Episode found: {}".format(vod["title"]))
         print("Length: {}".format(timedelta(seconds=int(vod["length"]))))
 
-        if cli_utils.confirm("Download vod?"):
+        if cli.confirm("Download vod?"):
             if not merge_files:
-                title = cli_utils.prompt_title(vod, split_episodes)
+                title = cli.prompt_title(vod, split_episodes)
                 to_download[title] = [vod]
             else:
                 episode_vods.append(vod)
 
     if merge_files and episode_vods:
-        title = cli_utils.prompt_title(episode_vods[0], split_episodes)
+        title = cli.prompt_title(episode_vods[0], split_episodes)
         to_download[title] = episode_vods
 
     return to_download
