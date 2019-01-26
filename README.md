@@ -27,9 +27,7 @@ Setup
 2. Run `python setup.py install` from the directory where you
 downloaded the repository
 
-3. Copy the contents of the "config" directory into ~/.config/cr_download
-
-4. Run `streamlink --twitch-oauth-authenticate` and copy the contents
+3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
 of the displayed page into the file
 `~/.config/cr_download/.streamlinkconfig` (you will need to create
 this file).

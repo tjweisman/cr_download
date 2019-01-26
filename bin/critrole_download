@@ -128,8 +128,8 @@ def vod_index_select(vods, split_episodes):
                   " download any vods): ")
     try:
         if int(index) > 0 and int(index) <= len(vods):
-            title = cli.prompt_title(vods[int(index) - 1],
-                                 multiple_parts=split_episodes)
+            title = cli.prompt_title(vods[int(index) - 1]["title"],
+                                     multiple_parts=split_episodes)
             to_download[title] = [vods[int(index) - 1]]
     except ValueError:
         pass
@@ -152,13 +152,13 @@ def vod_confirm_select(vods, merge_files, split_episodes):
 
         if cli.confirm("Download vod?"):
             if not merge_files:
-                title = cli.prompt_title(vod, split_episodes)
+                title = cli.prompt_title(vod["title"], split_episodes)
                 to_download[title] = [vod]
             else:
                 episode_vods.append(vod)
 
     if merge_files and episode_vods:
-        title = cli.prompt_title(episode_vods[0], split_episodes)
+        title = cli.prompt_title(episode_vods[0]["title"], split_episodes)
         to_download[title] = episode_vods
 
     return to_download
