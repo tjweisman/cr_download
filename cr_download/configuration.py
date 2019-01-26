@@ -38,7 +38,7 @@ def _load_config():
         with open(CONFIG_PATH, "r") as config_file:
             config_data = yaml.load(config_file)
     except(IOError, FileNotFoundError):
-        config_info = _get_default_config()
+        config_info = _get_default_config().decode('utf-8')
         config_data = yaml.load(config_info)
         _save_default_config(config_info)
 
