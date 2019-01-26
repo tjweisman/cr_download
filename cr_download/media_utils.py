@@ -34,8 +34,8 @@ def merge_audio_files(files, output):
         for name in files:
             filelist.write("file '{}'\n".format(name))
         filelist.flush()
-        subprocess.call(["ffmpeg", "-f", "concat", "-safe", "0", "-i",
-                         filelist.name, output])
+        subprocess.call(["ffmpeg", "-hide_banner", "-f", "concat",
+                         "-safe", "0", "-i", filelist.name, output])
 
 def change_ext(filename, new_ext):
     """return a new filename, with the extension changed.
@@ -58,9 +58,10 @@ def mp4_to_audio_segments(video_file, output_dir, segment_fmt):
         change_ext(basename, "%03d{}".format(segment_fmt))
     )
     with tempfile.NamedTemporaryFile(mode='w+') as filelist:
-        subprocess.call(["ffmpeg", "-i", video_file, "-f", "segment",
-                         "-segment_time", str(AUDIO_SEGMENT_LENGTH),
-                         "-segment_list", filelist.name, pattern])
+        subprocess.call(["ffmpeg", "-hide_banner", "-i", video_file,
+                         "-f", "segment", "-segment_time",
+                         str(AUDIO_SEGMENT_LENGTH), "-segment_list",
+                         filelist.name, pattern])
         split_files = [filename.strip() for filename in filelist]
 
     split_files = [os.path.join(output_dir, filename)
@@ -71,5 +72,6 @@ def mp4_to_audio_segments(video_file, output_dir, segment_fmt):
 def ffmpeg_convert(input_file, output_file):
     """wrapper function for ffmpeg video to audio conversion.
     """
-    subprocess.call(["ffmpeg", "-i", input_file, output_file])
+    subprocess.call(["ffmpeg", "-hide_banner", "-i",
+                     input_file, output_file])
     return output_file
