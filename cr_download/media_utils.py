@@ -75,3 +75,27 @@ def ffmpeg_convert(input_file, output_file):
     subprocess.call(["ffmpeg", "-hide_banner", "-i",
                      input_file, output_file])
     return output_file
+
+def _bytes_in_units(num_bytes, units):
+    if units == "kB":
+        return "{0:.1f}".format(num_bytes / 1000.0)
+    if units == "MB":
+        return "{0:.2f}".format(num_bytes / 1000000.0)
+    if units == "GB":
+        return "{0:.3f}".format(num_bytes / 1000000000.0)
+
+    return str(num_bytes)
+
+def display_bytes(num_bytes):
+    """get a string to conveniently display a number of bytes"""
+
+    if num_bytes < 1000:
+        unit = "B"
+    elif num_bytes < 1000000:
+        unit = "kB"
+    elif num_bytes < 1000000000:
+        unit = "MB"
+    else:
+        unit = "GB"
+
+    return _bytes_in_units(num_bytes, unit) + unit

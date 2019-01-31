@@ -171,7 +171,7 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
 
     """
     sample_prints = sample_fingerprint.load_prints(
-        sample_file=configuration.DATA["sample_data_file"]
+        sample_file=configuration.data["sample_data_file"]
     )
 
     print("Generating audio fingerprints...")
@@ -215,14 +215,14 @@ def autocut(audio_files, output_file,
     """
 
     if cutting_sequence is None or cutting_sequence == "default":
-        cutting_sequence = configuration.DATA["default_cutting_sequence"]
+        cutting_sequence = configuration.data["default_cutting_sequence"]
 
     if transition_sequence is None or transition_sequence == "default":
-        transition_sequence = configuration.DATA["default_audio_sequence"]
+        transition_sequence = configuration.data["default_audio_sequence"]
 
-    cutting_pattern = configuration.DATA["cutting_sequences"].get(
+    cutting_pattern = configuration.data["cutting_sequences"].get(
         cutting_sequence)
-    audio_sequence = configuration.DATA["audio_sequences"].get(
+    audio_sequence = configuration.data["audio_sequences"].get(
         transition_sequence)
 
     pcm_intervals = intervals_to_keep(
@@ -255,7 +255,7 @@ def get_autocut_errors(audio_files, window_time=10.0):
 
     """
     sample_prints = sample_fingerprint.load_prints(
-        sample_file=configuration.DATA["sample_data_file"]
+        sample_file=configuration.data["sample_data_file"]
     )
 
     fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)

@@ -44,4 +44,15 @@ def _load_config():
 
     return config_data
 
-DATA = _load_config()
+def update_config(updated_data):
+    """update the local config file with a dict of new values to store
+
+    """
+    global data
+
+    for key in updated_data:
+        data[key] = updated_data[key]
+
+    _save_default_config(yaml.dump(data))
+
+data = _load_config()
