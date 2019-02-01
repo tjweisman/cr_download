@@ -4,10 +4,12 @@
 
 import os
 import os.path as path
-import yaml
-
 import pkg_resources
 from  pkg_resources import Requirement
+
+from ruamel.yaml import YAML
+
+yaml = YAML(typ="safe")
 
 NAME = "cr_download"
 DIST_REQUIREMENT = Requirement.parse(NAME.replace("_", "-"))
