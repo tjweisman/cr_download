@@ -15,17 +15,19 @@ pre/post-show segments, intermission, and (optionally) the
 announcement section of the episode.
 
 In addition, cr_download can also upload the audio files for the
-episode to Google drive (mostly because my USB ports suck and I can't
-reliably transfer the audio to my phone over a wired connection, and
-Google Drive/WiFi is faster than Bluetooth).
+episode to a fixed Google drive folder.
 
 Setup
 ==========================
 
-1. Install required dependencies (see below)
+1. Install [ffmpeg](https://www.ffmpeg.org/) if you haven't already.
 
-2. Run `python setup.py install` from the directory where you
-downloaded the repository
+2. If installing via pip (recommended, if I've actually uploaded the
+package to PyPI by the time you read this), run `pip install
+cr-download`.
+
+Otherwise, download and extract the repository, and run `python
+setup.py install` from the directory you extracted it to.
 
 3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
 of the displayed page into the file
@@ -44,29 +46,7 @@ autocutting tool on a local video file.
 
 For more usage help, run `critrole_download -h` or `autocut_vod -h`
 
-Dependencies:
-==========================
-
-- [streamlink](https://streamlink.github.io/)
-
-- [ffmpeg](https://www.ffmpeg.org/)
-
-- [requests](http://docs.python-requests.org/en/master/)
-
-- [tqdm](https://pypi.org/project/tqdm/)
-
-- [PyYAML](https://pyyaml.org/)
-
-- [acoustid](https://acoustid.org/chromaprint) and its
-  [python bindings](https://pypi.org/project/pyacoustid/) (optional)
-  
-- [Google API python client](https://developers.google.com/api-client-library/python/)
-  (optional)
-
 TODO
 ============================
-
-- Streamline the "setup" process so it doesn't involve manual
-  configuration or manual installation of dependencies
 
 - Make autocutting rules more flexible
