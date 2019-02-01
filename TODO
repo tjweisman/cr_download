@@ -1,4 +1,0 @@
-- unify code for sample fingerprints and fingerprint sequences
-- setup code (put config files in the right place), including twitch authentication
-- identifying transitions without a pre-specified sequence
-- standardized test suite

@@ -26,8 +26,8 @@ Setup
 package to PyPI by the time you read this), run `pip install
 cr-download`.
 
-Otherwise, download and extract the repository, and run `python
-setup.py install` from the directory you extracted it to.
+ Otherwise, download and extract the repository, and run `python
+ setup.py install` from the directory you extracted it to.
 
 3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
 of the displayed page into the file
@@ -45,8 +45,3 @@ You can also run `autocut_vod FILENAME [FILENAME ...]` to run the
 autocutting tool on a local video file.
 
 For more usage help, run `critrole_download -h` or `autocut_vod -h`
-
-TODO
-============================
-
-- Make autocutting rules more flexible

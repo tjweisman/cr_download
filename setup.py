@@ -22,7 +22,7 @@ setup(
         'pyacoustid',
         'streamlink',
         'tqdm',
-        'pyyaml',
+        'pyyaml>=4.2b1',
         'requests',
         'google-api-python-client',
         'progressbar2'

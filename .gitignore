@@ -2,6 +2,7 @@
 *.mp3
 *.wav
 test
+notes
 
 *.egg-info
 build
