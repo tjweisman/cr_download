@@ -22,12 +22,12 @@ Setup
 
 1. Install [ffmpeg](https://www.ffmpeg.org/) if you haven't already.
 
-2. If installing via pip (recommended, if I've actually uploaded the
-package to PyPI by the time you read this), run `pip install
-cr-download`.
+2.  If installing via pip (recommended, if I've actually uploaded the
+    package to PyPI by the time you read this), run `pip install
+    cr-download`.
 
- Otherwise, download and extract the repository, and run `python
- setup.py install` from the directory you extracted it to.
+    Otherwise, download and extract the repository, and run `python
+    setup.py install` from the directory you extracted it to.
 
 3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
 of the displayed page into the file
