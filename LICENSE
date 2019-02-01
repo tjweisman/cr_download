@@ -32,7 +32,7 @@ google api client - Apache License 2.0
 acoustid - MIT License
 pyacoustid - MIT License
 requests - Apache License 2.0
-tqdm - MIT License
+progressbar2 - BSD License
 PyYAML - MIT License
 
 ffmpeg - LGPLv2.1+

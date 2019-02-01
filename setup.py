@@ -21,7 +21,6 @@ setup(
     install_requires=[
         'pyacoustid',
         'streamlink',
-        'tqdm',
         'ruamel.yaml<=0.15',
         'requests',
         'google-api-python-client',
