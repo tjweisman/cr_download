@@ -33,7 +33,7 @@ acoustid - MIT License
 pyacoustid - MIT License
 requests - Apache License 2.0
 progressbar2 - BSD License
-PyYAML - MIT License
+ruamel.yaml - MIT License
 
 ffmpeg - LGPLv2.1+
 streamlink - BSD license
