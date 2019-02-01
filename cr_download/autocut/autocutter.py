@@ -14,8 +14,8 @@ import tempfile
 import shutil
 from collections import deque
 
+from progressbar import progressbar
 import wave
-from tqdm import tqdm
 
 from .. import media_utils
 from .. import configuration
@@ -66,7 +66,7 @@ def fingerprint_transition_times(
     ashift_frame_start = 0
 
     print("Finding transition times...")
-    for i, window in tqdm(
+    for i, window in progressbar(
             enumerate(fingerprints.windows(window_time=window_time))):
 
         error = sample_prints[expected_sample].window_error(window)
@@ -142,7 +142,7 @@ def recut_files(input_files, output_dir, episode_segments):
     current_frame = 0
     print("recutting files...")
     #wrap the wav_sequence in a progress bar somehow?
-    for name, intervals in tqdm(episode_segments):
+    for name, intervals in progressbar(episode_segments):
         wavfile_name = os.path.join(
             output_dir,
             media_utils.change_ext(os.path.basename(name), ".wav"))
@@ -261,7 +261,7 @@ def get_autocut_errors(audio_files, window_time=10.0):
     fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)
 
     errors = []
-    for window in tqdm(fingerprints.windows(window_time=window_time)):
+    for window in progressbar(fingerprints.windows(window_time=window_time)):
 
         error = min([spr.window_error(window)
                      for spr in sample_prints.values()])

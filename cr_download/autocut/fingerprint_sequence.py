@@ -7,7 +7,7 @@ import os
 import hashlib
 import pickle
 
-from tqdm import tqdm
+from progressbar import progressbar
 
 from .. import appdata
 from . import fingerprint_utils
@@ -31,7 +31,7 @@ class FingerprintSequence:
     def load_from_audio_files(self, audio_files):
         """load the FingerprintSequence from a sequence of audio files.
         """
-        for filename in tqdm(audio_files):
+        for filename in progressbar(audio_files):
             fingerprint, data = fingerprint_utils.fingerprint_full_file(filename)
             self.duration += data["duration"]
             if ((self.channels is not None and

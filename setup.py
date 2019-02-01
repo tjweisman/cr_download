@@ -21,7 +21,6 @@ setup(
     install_requires=[
         'pyacoustid',
         'streamlink',
-        'tqdm',
         'pyyaml>=4.2b1',
         'requests',
         'google-api-python-client',
