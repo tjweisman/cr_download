@@ -19,3 +19,5 @@ fingerprint_cache_dir: .cache
 
 default_audio_sequence: campaign_2_newtheme
 default_cutting_sequence: cut_intro
+
+ffmpeg_path: ffmpeg

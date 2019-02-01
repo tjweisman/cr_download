@@ -93,6 +93,8 @@ def init_args():
     parser.add_argument("-v", dest="verbose", action="store_true",
                         default=False, help="Show more details about vods")
 
+    parser.add_argument("--ffmpeg-path", default="ffmpeg",
+                        help="""Path to ffmpeg""")
 
     parser.add_argument("--strict", action="store_const", dest="regex",
                         const=DEFAULT_CR_REGEX, help="""use a stricter
