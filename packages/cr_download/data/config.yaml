@@ -25,5 +25,11 @@ fingerprint_cache_dir: .cache
 audio_sequence: campaign_2_newtheme
 
 use_cache: False
+debug: False
 
+# path to ffmpeg executable (by default, expected to be in your path)
 ffmpeg_path: ffmpeg
+
+# copy the twitch token you get by running
+# "streamlink --twitch-oauth-authenticate' here
+twitch_token: YOUR_TOKEN_HERE

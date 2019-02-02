@@ -4,9 +4,11 @@ Overview
 cr_download checks recent Geek and Sundry Twitch VODs for videos with
 titles looking like Critical Role episode titles, and prompts the user
 to download each one. The file is downloaded as video using the
-"streamlink" program, and converted to audio using ffmpeg.
+[streamlink](https://streamlink.github.io/) API, and converted to
+audio using [ffmpeg](https://www.ffmpeg.org/).
 
-Optionally, cr_download can use the Chromaprint music fingerprinting
+Optionally, cr_download can use the
+[Chromaprint](https://acoustid.org/chromaprint) music fingerprinting
 algorithm to attempt to detect the soundtracks Critical Role plays
 before/after the show, in the opening credits, and during the
 break. If a good enough set of transition points is found in the
@@ -29,10 +31,11 @@ Setup
     Otherwise, download and extract the repository, and run `python
     setup.py install` from the directory you extracted it to.
 
-3. Run `streamlink --twitch-oauth-authenticate` and copy the contents
-of the displayed page into the file
-`~/.config/cr_download/.streamlinkconfig` (you will need to create
-this file).
+3. Run `streamlink --twitch-oauth-authenticate` to authorize
+streamlink to access your Twitch account. Copy the provided oauth
+token into your config file, located at
+`~/.config/cr_download/config.yaml` (it will be automatically created
+the first time you run the program).
 
 Usage
 ==================================

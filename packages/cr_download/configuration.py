@@ -47,30 +47,31 @@ class Configuration:
         if writeable:
             self.writeable_data.update(to_update)
 
-    def save_default(self):
+    def save_user(self):
         """save some of the configuration data to the user's default config
         file"""
-        _save_default_config(self.writeable_data)
+        _make_user_config_dir()
+        yaml.dump(self.writeable_data, pathlib.Path(CONFIG_PATH))
 
-def _get_default_config():
-    res_str = appdata.resource_string(CONFIG_FILE)
-    return Configuration(yaml.load(res_str.decode('utf-8')))
+def _get_default_config_string():
+    return appdata.resource_string(CONFIG_FILE).decode('utf-8')
 
-def _save_default_config(config_dict):
+def _make_user_config_dir():
     try:
         os.makedirs(CONFIG_DIR)
     except os.error:
         pass
 
-    yaml.dump(config_dict, Path(CONFIG_PATH))
-
 def _load_config():
-    config = _get_default_config()
+    default_config_string = _get_default_config_string()
+    config = Configuration(yaml.load(default_config_string))
     try:
-        with open(CONFIG_PATH, "r") as config_file:
-            config.update(yaml.load(config_file))
+        with open(CONFIG_PATH, "r") as user_config_file:
+            config.update(yaml.load(user_config_file))
     except(IOError, FileNotFoundError):
-        config.save_default()
+        _make_user_config_dir()
+        with open(CONFIG_PATH, "w") as user_config_file:
+            user_config_file.write(default_config_string)
 
     return config
 

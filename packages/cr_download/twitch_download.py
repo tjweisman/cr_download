@@ -29,18 +29,21 @@ HEADERS = {"Client-ID" : TWITCH_CLIENT_ID,
 
 DEFAULT_STREAM_QUALITY = "360p"
 
+UNCONFIGURED_TOKEN = "YOUR_TOKEN_HERE"
+
 def _get_oauth_token():
     try:
-        return config.twitch_token
+        if config.twitch_token != UNCONFIGURED_TOKEN:
+            return config.twitch_token
     except AttributeError:
-        print("This application is not yet authorized to access "
-              "your Twitch account! Run "
-              "'streamlink --twitch-oauth-authenticate "
-              "and set 'twitch_token' in your config file to the resulting "
-              "value.")
-        sys.exit()
-        return None
+        pass
 
+    print("This application is not yet authorized to access "
+          "your Twitch account! Run "
+          "'streamlink --twitch-oauth-authenticate' "
+          "and set 'twitch_token' in your config file to the resulting "
+          "value.")
+    sys.exit()
 
 def get_gands_id():
     """Retrieve the ID of the Geek & Sundry Twitch channel
@@ -112,3 +115,8 @@ def download_video(video, filename, buffer_size=8192,
 
             output_file.write(chunk)
             chunk = stream_file.read(buffer_size)
+
+# try and set token as soon as the module is loaded so that the user
+# knows to configure it if necessary. NOTE: this should be changed if
+# we want to let the user set the token on the command line.
+_TWITCH_TOKEN = _get_oauth_token()
