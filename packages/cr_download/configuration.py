@@ -1,10 +1,13 @@
-"""cr_settings.py: bootstrapper module that loads configuration data.
+"""configuration.py: handle application config files
+
+config data is exposed to the user as a global Configuration object,
+called 'data'. Users can import this object to get access to config
+settings, and update/save it using the Configuration class interface.
 
 """
 
 import os
 import os.path as path
-import pkg_resources
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -51,7 +54,7 @@ class Configuration:
         """save some of the configuration data to the user's default config
         file"""
         _make_user_config_dir()
-        yaml.dump(self.writeable_data, pathlib.Path(CONFIG_PATH))
+        yaml.dump(self.writeable_data, Path(CONFIG_PATH))
 
 def _get_default_config_string():
     return appdata.resource_string(CONFIG_FILE).decode('utf-8')

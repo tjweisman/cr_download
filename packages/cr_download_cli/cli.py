@@ -1,4 +1,8 @@
-import sys
+"""cli.py: provide argument setup for cr_download CLI tools, plus some
+utility CLI functions.
+
+"""
+
 import re
 import os
 from argparse import ArgumentParser
@@ -189,5 +193,6 @@ def base_argparser():
     return parser
 
 def parse_args(parser, args):
+    """parse args using parser and update configuration with the result"""
     args = parser.parse_args(args)
     config.update(vars(args))

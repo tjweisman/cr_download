@@ -3,7 +3,8 @@
 Module responsible for uploading a single file to a folder named
 "xfer" in the user's Google Drive root directory.
 
-This is super brittle and does basically no error checking.
+This is super brittle and doesn't provide error checking or
+configurability.
 
 """
 

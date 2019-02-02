@@ -1,4 +1,5 @@
-"""This module provides utility functions for audio/video conversion.
+"""media_utils.py: provides utility functions for audio/video
+conversion.
 
 Many of these functions are simple wrappers for ffmpeg functionality.
 

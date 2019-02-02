@@ -1,6 +1,6 @@
-"""fingerprint_sequence.py
+"""fingerprint_sequence.py: handle fingerprint data for a set of audio
+files
 
-handle fingerprint data for a set of audio files
 """
 
 import os
@@ -98,7 +98,7 @@ def load_fingerprints(audio_files, use_cache=False):
     """load a fingerprint sequence from an array of audio files.
 
     if use_cache is specified, try to load the sequence from a pickle
-    in the config directory first.
+    in the cache directory first.
 
     """
     fingerprints = None

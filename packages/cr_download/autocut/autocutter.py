@@ -44,11 +44,9 @@ def fingerprint_transition_times(
     """identify indices in a fingerprint array where transition
     soundtracks start/stop.
 
-    FINGERPRINT_CHUNKS is (effectively) concatenated and then cut into
-    windows, each of which is compared to the soundtracks in SAMPLE
-    PRINTS. We return an array of pairs marking the beginnings/ends of
-    segments of the array which lie between transition soundtracks
-    (and are marked to be kept by CUTTING_PATTERN).
+    return an array of pairs marking the beginnings/ends of segments
+    of the array which lie between transition soundtracks.
+
     """
 
     transition_indices = []
@@ -198,11 +196,12 @@ def autocut(audio_files, output_file):
     """automatically edit the array of audio files to exclude transitions
     and specific segments between them.
 
-    if MERGE_SEGMENTS is specified, a single audio file is produced,
-    with undesired segments excluded. Otherwise, one audio file for
-    each desired segment is created.
+    if config.autocut_merge is specified, a single audio file is
+    produced, with undesired segments excluded. Otherwise, one audio
+    file for each desired segment is created.
 
     returns the name(s) of the created file(s).
+
     """
 
     if config.cutting_sequence:
@@ -239,7 +238,7 @@ def autocut(audio_files, output_file):
 
 def get_autocut_errors(audio_files, window_time=10.0):
     """get an array of the minimum bit diffs found in the fingerprint
-    array for AUDIO_FILES and the sample transition arrays
+    array for audio_files and the sample transition arrays
 
     """
     sample_prints = sample_fingerprint.load_prints(

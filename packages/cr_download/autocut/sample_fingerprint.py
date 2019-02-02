@@ -1,3 +1,11 @@
+"""sample_fingerprint.py: handle fingerprint data for expected
+transition soundtracks
+
+Episode audio is compared with this fingerprint data to find
+transition points.
+
+"""
+
 from __future__ import print_function
 
 import os
@@ -33,9 +41,10 @@ class SampleFingerprint:
         to the fingerprint of a transition soundtrack.
 
         we slide the window across the sample, computing percent bit
-        errors, and take the minimum. If CHECK_HIGH_BITS is specified,
+        errors, and take the minimum. If check_high_bits is specified,
         do a first pass so we only check points where the high-order
         bits of the sample/window agree.
+
         """
         offsets = range(len(self) - len(window_print))
 
@@ -59,14 +68,14 @@ class SampleFingerprint:
 def load_prints(mask=MASK, sample_file=None):
     """Load transition soundtrack fingerprint data from file(s).
 
-    If SAMPLE_FILE is specified, this function tries to load
+    If sample_file is specified, this function tries to load
     fingerprint data from a pickle file stored in the cache directory.
 
     If that fails, it will load the actual .mp3 files for transition
     soundtracks from application resources, regenerate the fingerprint
     data, and save it to the specified pickle file.
 
-    If no SAMPLE_FILE is specified, just generate the fingerprint
+    If no sample_file is specified, just generate the fingerprint
     data.
 
     """
