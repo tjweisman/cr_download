@@ -10,15 +10,14 @@ from pathlib import Path
 from ruamel.yaml import YAML
 
 from . import appdata
+from .name import APP_NAME
 
 yaml = YAML(typ="safe")
-
-NAME = "cr_download"
 
 _XDG_CONFIG_HOME = (os.environ.get('XDG_CONFIG_HOME')
                     or path.join(path.expanduser("~"), ".config"))
 
-CONFIG_DIR = path.join(_XDG_CONFIG_HOME, NAME)
+CONFIG_DIR = path.join(_XDG_CONFIG_HOME, APP_NAME)
 CONFIG_FILE = "config.yaml"
 
 CONFIG_PATH = path.join(CONFIG_DIR, CONFIG_FILE)

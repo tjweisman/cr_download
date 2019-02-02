@@ -156,12 +156,12 @@ def autocutter_argparser():
                               help="""On autocut errors, just merge output into a
                               single audio file""")
 
-    autocut_args.add_argument("--cutting-sequence", default="default",
+    autocut_args.add_argument("--cutting-sequence",
                               help="""which cutting sequence to use when autocutting
                               files (default behavior specified in config file)""")
 
     autocut_args.add_argument("-k", "--keep-intro", action="store_const",
-                              dest="cutting_sequence", const="keep",
+                              dest="cutting_sequence", const="keep_intro",
                               help="""when autocutting, keep the pre-show
                               announcements/intro section""")
 
@@ -188,6 +188,6 @@ def base_argparser():
                         action="store_true", help="debug mode")
     return parser
 
-def parse_args(parser):
-    args = parser.parse_args(sys.argv[1:])
+def parse_args(parser, args):
+    args = parser.parse_args(args)
     config.update(vars(args))

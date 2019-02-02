@@ -170,7 +170,7 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
 
     print("Generating audio fingerprints...")
     fingerprints = fingerprint_sequence.load_fingerprints(
-        audio_files, use_cache=False)
+        audio_files, use_cache=config.use_cache)
 
     fp_transitions = fingerprint_transition_times(
         fingerprints, sample_prints, transition_sequence,
@@ -205,13 +205,20 @@ def autocut(audio_files, output_file):
     returns the name(s) of the created file(s).
     """
 
+    if config.cutting_sequence:
+        cutting_sequence = config.cutting_sequences[config.cutting_sequence]
+    else:
+        cutting_sequence = config.cutting_sequences[
+            config.default_cutting_sequence
+        ]
+
     pcm_intervals = intervals_to_keep(
         get_transition_times(audio_files,
                              config.audio_sequences[config.audio_sequence]),
-        config.cutting_sequences[config.cutting_sequence]
+        cutting_sequence
     )
 
-    if config.merge_segments:
+    if config.autocut_merge:
         episode_segments = [(output_file, pcm_intervals)]
     else:
         episode_segments = [

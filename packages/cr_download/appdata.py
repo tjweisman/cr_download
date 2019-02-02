@@ -1,6 +1,8 @@
 import os
 import pkg_resources
 
+from .name import APP_NAME
+
 CACHE_DIR = "cache"
 DATA_DIR = "data"
 
@@ -9,7 +11,7 @@ SOUND_DIR = "sound_files"
 def get_userdata_dir():
     return os.environ.get('XDG_DATA_HOME', os.path.join(
         os.path.expanduser('~'), ".local", "share",
-        configuration.NAME))
+        APP_NAME))
 
 def get_cache_dir():
     return os.path.join(get_userdata_dir(), CACHE_DIR)

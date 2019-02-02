@@ -19,7 +19,7 @@ STRICT_CR_REGEX = ".*Critical Role Ep(isode)? ?.*"
 DEFAULT_CR_REGEX = ".*Critical Role.*"
 
 
-def downloader_argparser():
+def _downloader_argparser():
     base_parser = cli.base_argparser()
     autocut_parser = cli.autocutter_argparser()
     parser = ArgumentParser(parents=[base_parser, autocut_parser],
@@ -66,10 +66,6 @@ def downloader_argparser():
                                const=STRICT_CR_REGEX, help="""use a stricter
                                regex to match possible CR vods""")
     return parser
-
-
-DEBUG = False
-
 
 def _upload_file(title):
     from cr_download import drive_upload
@@ -133,9 +129,9 @@ def vod_confirm_select(vods, merge_files, split_episodes):
 
     return to_download
 
-def main():
-    parser = downloader_argparser()
-    cli.parse_args(parser)
+def main(args):
+    parser = _downloader_argparser()
+    cli.parse_args(parser, args)
 
     cr_filter = config.regex
     if config.index_select:

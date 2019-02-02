@@ -17,10 +17,13 @@ cutting_sequences:
         keep_intro: [C, C, K, C, K, C, C, C, K, C]
         cut_intro_double: [C, C, C, C, C, C, K, C, C, C, K, C]
 
+default_cutting_sequence: cut_intro
+
 sample_data_file: sample_fingerprints
 fingerprint_cache_dir: .cache
 
 audio_sequence: campaign_2_newtheme
-cutting_sequence: cut_intro
+
+use_cache: False
 
 ffmpeg_path: ffmpeg
