@@ -8,22 +8,49 @@ Once again this code is super brittle.
 
 """
 
+from __future__ import print_function
+
+import sys
 import os
 import re
 import subprocess
 import shlex
 
 import requests
+import streamlink
+from streamlink_cli.main import setup_console, twitch
+import progressbar
 
+from . import media_utils
 from . import configuration
+from . import cli
+
+TwitchException = Exception
 
 CONFIG_FILENAME = ".streamlinkconfig"
 
-CLIENT_ID = "ignduriqallck9hugiw15zfaqdvgwc"
+TWITCH_CLIENT_ID = "ignduriqallck9hugiw15zfaqdvgwc"
 GANDS_ID = "36619809"
 
 HEADERS = {"Client-ID" : CLIENT_ID,
            "Accept"    : "application/vnd.twitchtv.v5+json"}
+
+DEFAULT_STREAM_QUALITY = "360p"
+
+def _get_oauth_token(retrieve_token=True):
+    try:
+        return configuration.data["twitch_token"]
+    except KeyError:
+        if retrieve_token:
+            launch_browser = cli.confirm("""This application is not yet
+            authorized to access your Twitch account. Launch a web browser
+            now to obtain an authorization token?""")
+            if launch_browser:
+                #TODO: actually launch a browser here, hopefully
+                #without relying on streamlink living in the user's
+                #path
+                return
+        raise
 
 def get_gands_id():
     """Retrieve the ID of the Geek & Sundry Twitch channel
@@ -54,18 +81,43 @@ def get_vod_list(cr_filter=None, limit=10):
 
     return vods
 
-def download_video(video, name):
-    """download a twitch video using streamlink.
+def _download_progress_bar():
+    widgets = [
+        'Downloaded: ',
+        progressbar.DataSize(),
+        '(',
+        progressbar.FileTransferSpeed(),
+        ')'
+    ]
+    return progressbar.ProgressBar(widgets=widgets)
 
-    video: a dictionary object, matching the format of that
-    returned by get_vod_list.
+def download_video(video, filename, buffer_size=8192,
+                       output_progress=True):
 
-    name: the filename to save the video under
+    oauth_token = _get_oauth_token(retrieve_token=False)
+    session = streamlink.Streamlink()
+    session.set_plugin_option("twitch", "oauth-token", oauth_token)
 
-    """
-    video_url = "twitch.tv/videos/" + video["_id"][1:]
+    streams = session.streams(video["url"])
 
-    config_file = os.path.join(configuration.CONFIG_DIR, CONFIG_FILENAME)
-    cmd = "streamlink --config {} {} 360p -f -o {}".format(
-        config_file, video_url, name)
-    subprocess.call(shlex.split(cmd))
+    if streams and DEFAULT_STREAM_QUALITY in streams:
+        stream = streams[DEFAULT_STREAM_QUALITY]
+    else:
+        raise TwitchException("Could not find stream {1} at url {2}".format(
+            DEFAULT_STREAM_QUALITY, video["url"]))
+
+    total_downloaded = 0
+    with stream.open() as stream_file, open(filename, "wb") as output_file:
+        if output_progress:
+            bar = _download_progress_bar()
+
+        chunk = stream_file.read(buffer_size)
+
+        while chunk:
+            total_downloaded += len(chunk)
+
+            if output_progress:
+                bar.update(total_downloaded)
+
+            output_file.write(chunk)
+            chunk = stream_file.read(buffer_size)

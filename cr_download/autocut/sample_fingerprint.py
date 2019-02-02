@@ -85,7 +85,7 @@ def load_prints(mask=MASK, sample_file=None):
     prints = {}
 
     tmpdir = tempfile.mkdtemp()
-    sample_audio_files = configuration.DATA["sample_audio_files"]
+    sample_audio_files = configuration.data["sample_audio_files"]
     for key, filename in sample_audio_files.items():
         wav_file = os.path.join(tmpdir,
                                 media_utils.change_ext(filename, ".wav"))
