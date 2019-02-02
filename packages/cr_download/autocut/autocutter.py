@@ -12,13 +12,13 @@ from builtins import dict
 import os
 import tempfile
 import shutil
+import wave
 from collections import deque
 
 from progressbar import progressbar
-import wave
 
 from .. import media_utils
-from .. import configuration
+from ..configuration import data as config
 
 from . import sample_fingerprint
 from . import fingerprint_sequence
@@ -28,10 +28,6 @@ CUT = "C"
 KEEP = "K"
 
 DEBUG = False
-
-DEFAULT_ERROR_THRESHOLD = 0.22
-DEFAULT_TIME_THRESHOLD = 2
-
 
 class AutocutterException(Exception):
     """exception thrown when there are problems preventing an audio file
@@ -43,8 +39,6 @@ class AutocutterException(Exception):
 def fingerprint_transition_times(
         fingerprints, sample_prints,
         transition_sequence,
-        error_threshold=DEFAULT_ERROR_THRESHOLD,
-        time_threshold=DEFAULT_TIME_THRESHOLD,
         window_time=10.0):
 
     """identify indices in a fingerprint array where transition
@@ -71,15 +65,15 @@ def fingerprint_transition_times(
 
         error = sample_prints[expected_sample].window_error(window)
 
-        if ((transitioning and error > error_threshold) or
-            ((not transitioning) and (error < error_threshold))):
+        if ((transitioning and error > config.autocut_error_threshold) or
+            ((not transitioning) and (error < config.autocut_error_threshold))):
             if ashift_frame_ct == 0:
                 ashift_frame_start = i * fingerprints.window_size(window_time)
             ashift_frame_ct += 1
         else:
             ashift_frame_ct = 0
 
-        if ashift_frame_ct >= time_threshold:
+        if ashift_frame_ct >= config.autocut_time_threshold:
             ashift_frame_ct = 0
             transition_indices.append(ashift_frame_start)
 
@@ -171,7 +165,7 @@ def get_transition_times(audio_files, transition_sequence, window_time=10):
 
     """
     sample_prints = sample_fingerprint.load_prints(
-        sample_file=configuration.data["sample_data_file"]
+        sample_file=config.sample_data_file
     )
 
     print("Generating audio fingerprints...")
@@ -200,10 +194,7 @@ def _get_episode_partname(episode_pattern, part_index):
     return ep_name
 
 
-def autocut(audio_files, output_file,
-            cutting_sequence=None,
-            transition_sequence=None,
-            debug=False, merge_segments=False):
+def autocut(audio_files, output_file):
     """automatically edit the array of audio files to exclude transitions
     and specific segments between them.
 
@@ -214,23 +205,13 @@ def autocut(audio_files, output_file,
     returns the name(s) of the created file(s).
     """
 
-    if cutting_sequence is None or cutting_sequence == "default":
-        cutting_sequence = configuration.data["default_cutting_sequence"]
-
-    if transition_sequence is None or transition_sequence == "default":
-        transition_sequence = configuration.data["default_audio_sequence"]
-
-    cutting_pattern = configuration.data["cutting_sequences"].get(
-        cutting_sequence)
-    audio_sequence = configuration.data["audio_sequences"].get(
-        transition_sequence)
-
     pcm_intervals = intervals_to_keep(
-        get_transition_times(audio_files, audio_sequence),
-        cutting_pattern
+        get_transition_times(audio_files,
+                             config.audio_sequences[config.audio_sequence]),
+        config.cutting_sequences[config.cutting_sequence]
     )
 
-    if merge_segments:
+    if config.merge_segments:
         episode_segments = [(output_file, pcm_intervals)]
     else:
         episode_segments = [
@@ -242,7 +223,7 @@ def autocut(audio_files, output_file,
     try:
         output_files = recut_files(audio_files, tmpdir, episode_segments)
     finally:
-        if (not DEBUG and not debug):
+        if (not DEBUG and not config.debug):
             shutil.rmtree(tmpdir)
         else:
             print(("Debug mode: autocutter preserving temporary directory "
@@ -255,7 +236,7 @@ def get_autocut_errors(audio_files, window_time=10.0):
 
     """
     sample_prints = sample_fingerprint.load_prints(
-        sample_file=configuration.data["sample_data_file"]
+        sample_file=config.sample_data_file
     )
 
     fingerprints = fingerprint_sequence.FingerprintSequence(audio_files)

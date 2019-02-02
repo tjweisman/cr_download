@@ -7,7 +7,7 @@ import tempfile
 import shutil
 
 from .. import media_utils
-from .. import configuration
+from ..configuration import data as config
 from .. import appdata
 from . import fingerprint_utils
 
@@ -85,14 +85,12 @@ def load_prints(mask=MASK, sample_file=None):
     prints = {}
 
     tmpdir = tempfile.mkdtemp()
-    sample_audio_files = configuration.data["sample_audio_files"]
-    for key, filename in sample_audio_files.items():
+    for key, filename in config.sample_audio_files.items():
         wav_file = os.path.join(tmpdir,
                                 media_utils.change_ext(filename, ".wav"))
 
         #not an error: resource management API uses /, not system pathsep
-        mp3_file = appdata.resource_filename(
-            appdata.SOUND_DIR + "/" + filename)
+        mp3_file = appdata.resource_filename(appdata.SOUND_DIR + "/" + filename)
 
         media_utils.ffmpeg_convert(mp3_file, wav_file)
         fingerprints, _ = fingerprint_utils.fingerprint_full_file(wav_file)

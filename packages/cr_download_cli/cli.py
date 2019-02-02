@@ -1,6 +1,12 @@
+import sys
 import re
 import os
+from argparse import ArgumentParser
 
+
+from cr_download import media_utils
+from cr_download.autocut import autocutter
+from cr_download.configuration import data as config
 
 _CONFIRM_YN_OPTION = {"Y":True, "N":False}
 _CONFIRM_YN_ORDER = "YN"
@@ -101,6 +107,43 @@ def prompt_title(vod_title="", multiple_parts=False):
 
     return title
 
+def videos_to_episode_audio(video_files, title, tmpdir):
+    """convert all of the files in VIDEO_FILES to one or more audio files.
+
+    if autocut is set to run, run the autocutting algorithm on each
+    episode before outputting. if, in addition, autocut_merge is
+    specified, the different parts of the (autocut) episode are merged
+    into a single audio file.
+
+    return the name(s) of the audio file(s) created.
+
+    """
+
+    episodes = []
+    for filename in video_files:
+        episodes.append(
+            media_utils.mp4_to_audio_segments(
+                filename, tmpdir,
+                segment_fmt=".wav"))
+
+    output_files = []
+    for episode_segments in episodes:
+        if config.autocut:
+            try:
+                output_files += autocutter.autocut(episode_segments, title)
+            except autocutter.AutocutterException:
+                if config.autocut_ignore_errors:
+                    print("Autocutter failed, exporting episode audio uncut as {}"
+                          .format(title))
+                    output_files.append(
+                        media_utils.merge_audio_files(episode_segments, title))
+                else:
+                    raise
+        else:
+            output_files.append(media_utils.merge_audio_files(episode_segments, title))
+
+    return output_files
+
 def autocutter_argparser():
     """get an argument parser containing a subgroup with autocutter config
     args"""
@@ -133,18 +176,18 @@ def autocutter_argparser():
 
     return parser
 
-def video_argparser():
-    """get an argument parser containing video options"""
+def base_argparser():
+    """get an argument parser containing global options"""
 
     parser = ArgumentParser(add_help=False)
+
     parser.add_argument("--ffmpeg-path", default="ffmpeg",
                         help="""Path to ffmpeg""")
+
+    parser.add_argument("-d", "--debug", dest="debug",
+                        action="store_true", help="debug mode")
     return parser
 
-def downloader_argparser():
-    vid_parser = video_argparser()
-    autocut_parser = autocutter_argparser()
-    parser = ArgumentParser(parents=[vid_parser, autocut_parser],
-                            description="Download .mp3 files for Critical "
-                            "Role episodes from Twitch")
-    return parser
+def parse_args(parser):
+    args = parser.parse_args(sys.argv[1:])
+    config.update(vars(args))

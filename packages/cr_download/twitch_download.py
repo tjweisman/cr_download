@@ -11,46 +11,36 @@ Once again this code is super brittle.
 from __future__ import print_function
 
 import sys
-import os
 import re
-import subprocess
-import shlex
 
 import requests
 import streamlink
-from streamlink_cli.main import setup_console, twitch
 import progressbar
 
-from . import media_utils
-from . import configuration
-from . import cli
+from cr_download.configuration import data as config
 
 TwitchException = Exception
-
-CONFIG_FILENAME = ".streamlinkconfig"
 
 TWITCH_CLIENT_ID = "ignduriqallck9hugiw15zfaqdvgwc"
 GANDS_ID = "36619809"
 
-HEADERS = {"Client-ID" : CLIENT_ID,
+HEADERS = {"Client-ID" : TWITCH_CLIENT_ID,
            "Accept"    : "application/vnd.twitchtv.v5+json"}
 
 DEFAULT_STREAM_QUALITY = "360p"
 
-def _get_oauth_token(retrieve_token=True):
+def _get_oauth_token():
     try:
-        return configuration.data["twitch_token"]
-    except KeyError:
-        if retrieve_token:
-            launch_browser = cli.confirm("""This application is not yet
-            authorized to access your Twitch account. Launch a web browser
-            now to obtain an authorization token?""")
-            if launch_browser:
-                #TODO: actually launch a browser here, hopefully
-                #without relying on streamlink living in the user's
-                #path
-                return
-        raise
+        return config.twitch_token
+    except AttributeError:
+        print("This application is not yet authorized to access "
+              "your Twitch account! Run "
+              "'streamlink --twitch-oauth-authenticate "
+              "and set 'twitch_token' in your config file to the resulting "
+              "value.")
+        sys.exit()
+        return None
+
 
 def get_gands_id():
     """Retrieve the ID of the Geek & Sundry Twitch channel
@@ -92,9 +82,10 @@ def _download_progress_bar():
     return progressbar.ProgressBar(widgets=widgets)
 
 def download_video(video, filename, buffer_size=8192,
-                       output_progress=True):
-
-    oauth_token = _get_oauth_token(retrieve_token=False)
+                   output_progress=True):
+    """download a video object to the given output file.
+    """
+    oauth_token = _get_oauth_token()
     session = streamlink.Streamlink()
     session.set_plugin_option("twitch", "oauth-token", oauth_token)
 
@@ -109,7 +100,7 @@ def download_video(video, filename, buffer_size=8192,
     total_downloaded = 0
     with stream.open() as stream_file, open(filename, "wb") as output_file:
         if output_progress:
-            bar = _download_progress_bar()
+            progress_bar = _download_progress_bar()
 
         chunk = stream_file.read(buffer_size)
 
@@ -117,7 +108,7 @@ def download_video(video, filename, buffer_size=8192,
             total_downloaded += len(chunk)
 
             if output_progress:
-                bar.update(total_downloaded)
+                progress_bar.update(total_downloaded)
 
             output_file.write(chunk)
             chunk = stream_file.read(buffer_size)

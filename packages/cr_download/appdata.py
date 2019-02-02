@@ -1,11 +1,10 @@
 import os
 import pkg_resources
 
-from . import configuration
-
 CACHE_DIR = "cache"
+DATA_DIR = "data"
 
-SOUND_DIR = "share/sound_files"
+SOUND_DIR = "sound_files"
 
 def get_userdata_dir():
     return os.environ.get('XDG_DATA_HOME', os.path.join(
@@ -26,7 +25,12 @@ def open_cache_file(filename, mode):
 def cache_filename(filename):
     return os.path.join(get_cache_dir(), filename)
 
+def resource_string(resource):
+    datapath = "{data_dir}/{resource}".format(
+        data_dir=DATA_DIR, resource=resource)
+    return pkg_resources.resource_string(__name__, datapath)
 
-def resource_filename(resource_path):
-    return pkg_resources.resource_filename(configuration.DIST_REQUIREMENT,
-                                           resource_path)
+def resource_filename(resource):
+    datapath = "{dir}/{resource}".format(
+        data_dir=DATA_DIR, resource=resource)
+    return pkg_resources.resource_filename(__name__, datapath)

@@ -9,7 +9,9 @@ with open(path.join(setup_dir, 'README.md'),
 setup(
     name="cr_download",
     version="0.9",
+    package_dir={'':'packages'},
     packages=find_packages(),
+
     scripts=["bin/critrole_download",
              "bin/autocut_vod"],
 
@@ -21,7 +23,7 @@ setup(
     install_requires=[
         'pyacoustid',
         'streamlink',
-        'ruamel.yaml<=0.15',
+        'ruamel.yaml>=0.15.0, <=0.15.87',
         'requests',
         'google-api-python-client',
         'progressbar2'
