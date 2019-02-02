@@ -67,7 +67,6 @@ def _multipart_title(title):
     prefix, ext = os.path.splitext(title)
     return prefix + "_*" + ext
 
-
 def prompt_title(vod_title="", multiple_parts=False):
     """Ask the user to provide a title (or title pattern) for a vod.
 
@@ -101,3 +100,51 @@ def prompt_title(vod_title="", multiple_parts=False):
             accepted_title = True
 
     return title
+
+def autocutter_argparser():
+    """get an argument parser containing a subgroup with autocutter config
+    args"""
+
+    parser = ArgumentParser(add_help=False)
+
+    autocut_args = parser.add_argument_group("autocutter")
+
+    autocut_args.add_argument("--ignore-errors", action="store_true",
+                              help="""On autocut errors, just merge output into a
+                              single audio file""")
+
+    autocut_args.add_argument("--cutting-sequence", default="default",
+                              help="""which cutting sequence to use when autocutting
+                              files (default behavior specified in config file)""")
+
+    autocut_args.add_argument("-k", "--keep-intro", action="store_const",
+                              dest="cutting_sequence", const="keep",
+                              help="""when autocutting, keep the pre-show
+                              announcements/intro section""")
+
+    autocut_args.add_argument("--cut-intro", action="store_const",
+                              dest="cutting_sequence", const="cut",
+                              help="""when autocutting, cut the pre-show
+                              announcements/intro section""")
+
+    autocut_args.add_argument("-M", "--autocut-merge", action="store_true",
+                              help="""when autocutting, merge the cut segments into
+                              a single file instead of cutting along breaks""")
+
+    return parser
+
+def video_argparser():
+    """get an argument parser containing video options"""
+
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument("--ffmpeg-path", default="ffmpeg",
+                        help="""Path to ffmpeg""")
+    return parser
+
+def downloader_argparser():
+    vid_parser = video_argparser()
+    autocut_parser = autocutter_argparser()
+    parser = ArgumentParser(parents=[vid_parser, autocut_parser],
+                            description="Download .mp3 files for Critical "
+                            "Role episodes from Twitch")
+    return parser
