@@ -51,20 +51,26 @@ def _downloader_argparser():
                                help="""Set max number of VODs to retrieve
                                when searching for CR episodes (default: 10)""")
 
-    download_args.add_argument("-n", action="store_const", dest="regex",
-                               const=None, help="""don't filter vods at all
-                               when searching for CR videos""")
 
+    # regex arguments
     download_args.add_argument("-r", "--regex", default=DEFAULT_CR_REGEX,
                                help=""""what regex to use when filtering for
                                CR vods""")
 
+    download_args.add_argument("--strict", action="store_const",
+                               dest="regex", const=STRICT_CR_REGEX,
+                               help="""use a stricter regex to match
+                               possible CR vods""")
+
+    download_args.add_argument("-n", action="store_const", dest="regex",
+                               const=None, help="""don't filter vods at all
+                               when searching for CR videos""")
+
+
     download_args.add_argument("-v", dest="verbose", action="store_true",
                                default=False, help="Show more details about vods")
 
-    download_args.add_argument("--strict", action="store_const", dest="regex",
-                               const=STRICT_CR_REGEX, help="""use a stricter
-                               regex to match possible CR vods""")
+
     return parser
 
 def _upload_file(title):
