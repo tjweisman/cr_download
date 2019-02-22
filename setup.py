@@ -8,17 +8,14 @@ with open(path.join(setup_dir, 'README.md'),
 
 setup(
     name="cr_download",
-    version="0.9",
+    version="0.91",
     package_dir={'':'packages'},
     packages=find_packages(),
 
     scripts=["bin/critrole_download",
              "bin/autocut_vod"],
 
-    package_data={
-        '':['share/config.yaml',
-            'share/sound_files/*']
-    },
+    include_package_data=True,
 
     install_requires=[
         'pyacoustid',
@@ -34,8 +31,8 @@ setup(
     license='MIT',
     url="https://github.com/tjweisman/cr_download",
 
-    description="""Tool to download Critical Role episodes from
-    the Geek & Sundry Twitch channel, convert to audio, and recut.""",
+    description="""Tool to download and automatically edit Critical Role
+    episodes.""",
 
     long_description=long_description,
     long_description_content_type='text/markdown'
