@@ -22,7 +22,7 @@ from cr_download.configuration import data as config
 TwitchException = Exception
 
 TWITCH_CLIENT_ID = "ignduriqallck9hugiw15zfaqdvgwc"
-GANDS_ID = "36619809"
+CRITROLE_TWITCH_CHANNEL = "criticalrole"
 
 HEADERS = {"Client-ID" : TWITCH_CLIENT_ID,
            "Accept"    : "application/vnd.twitchtv.v5+json"}
@@ -45,14 +45,12 @@ def _get_oauth_token():
           "value.")
     sys.exit()
 
-def get_gands_id():
-    """Retrieve the ID of the Geek & Sundry Twitch channel
 
-    currently not needed, since the G&S ID has already been retrieved
-    and hard-coded into the application
+def get_channel_id(channel_name):
+    """Retrieve the Twitch ID of the channel with the given name
 
     """
-    params = {"login":"geekandsundry"}
+    params = {"login":channel_name}
     response = requests.get("https://api.twitch.tv/kraken/users",
                             headers=HEADERS, params=params)
     return response.json()["users"][0]["_id"]
@@ -64,7 +62,8 @@ def get_vod_list(cr_filter=None, limit=10):
     """
     limit = max(min(limit, 100), 1)
     params = {"broadcast_type":"archive", "limit":str(limit)}
-    url = "https://api.twitch.tv/kraken/channels/{}/videos".format(GANDS_ID)
+    channel_id = get_channel_id(CRITROLE_TWITCH_CHANNEL)
+    url = "https://api.twitch.tv/kraken/channels/{}/videos".format(channel_id)
     response = requests.get(url, headers=HEADERS, params=params)
     vods = response.json()["videos"]
 
