@@ -44,7 +44,13 @@ Run `critrole_download` (it should be added to your path after
 installation) to display a list of recent Geek & Sundry VODs. You may
 choose one (or more) to download and convert to audio.
 
+To run the automatic audio editor on the downloaded files, run
+`critrole_download -a`.
+
 You can also run `autocut_vod FILENAME [FILENAME ...]` to run the
 autocutting tool on a local video file.
 
-For more usage help, run `critrole_download -h` or `autocut_vod -h`
+To see a full list of options for each command, run `critrole_download
+-h` or `autocut_vod -h`. You can also change the behavior of the
+program by editing options in the configuration file located at
+`~/.config/cr_download/config.yaml`.
