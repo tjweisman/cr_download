@@ -136,7 +136,7 @@ def videos_to_episode_audio(video_files, title, tmpdir):
             try:
                 output_files += autocutter.autocut(episode_segments, title)
             except autocutter.AutocutterException:
-                if config.autocut_ignore_errors:
+                if config.ignore_errors:
                     print("Autocutter failed, exporting episode audio uncut as {}"
                           .format(title))
                     output_files.append(
