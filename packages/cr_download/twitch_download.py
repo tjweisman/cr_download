@@ -27,7 +27,7 @@ CRITROLE_TWITCH_CHANNEL = "criticalrole"
 HEADERS = {"Client-ID" : TWITCH_CLIENT_ID,
            "Accept"    : "application/vnd.twitchtv.v5+json"}
 
-DEFAULT_STREAM_QUALITY = "360p"
+DEFAULT_STREAM_QUALITY = "audio"
 
 UNCONFIGURED_TOKEN = "YOUR_TOKEN_HERE"
 
