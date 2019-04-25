@@ -7,6 +7,7 @@ import re
 import os
 from argparse import ArgumentParser
 
+from builtins import input
 
 from cr_download import media_utils
 from cr_download.autocut import autocutter
