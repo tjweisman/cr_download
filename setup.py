@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 from os import path
+from io import open
 
 setup_dir = path.abspath(path.dirname(__file__))
 with open(path.join(setup_dir, 'README.md'),
@@ -8,7 +9,7 @@ with open(path.join(setup_dir, 'README.md'),
 
 setup(
     name="cr_download",
-    version="0.91b",
+    version="0.92a0",
     package_dir={'':'packages'},
     packages=find_packages(),
 
@@ -23,7 +24,9 @@ setup(
         'ruamel.yaml>=0.15.0, <=0.15.87',
         'requests',
         'google-api-python-client',
-        'progressbar2'
+        'progressbar2',
+        'future',
+        'pathlib'
     ],
 
     author="Teddy Weisman",

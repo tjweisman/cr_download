@@ -87,7 +87,7 @@ def load_prints(mask=MASK, sample_file=None):
             with appdata.open_cache_file(sample_file, "rb") as pfi:
                 prints = pickle.load(pfi)
             return prints
-        except(IOError, pickle.UnpicklingError, FileNotFoundError):
+        except(IOError, OSError, pickle.UnpicklingError):
             print("Could not open samples from {}. ".format(pickle_path))
 
     print("Generating fingerprints...")
