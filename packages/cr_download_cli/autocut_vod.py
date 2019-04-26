@@ -51,7 +51,10 @@ def main(args):
             title: cli.videos_to_episode_audio(video_files, title, tmpdir)
             for title, video_files in vods.items()
         }
-        print("Output audio files to:\n" + "\n".join(sorted(list(audio_files))))
+        for title, files in audio_files.items():
+            print("Output audio files for {}:\n{}".format(
+                title, "\n".join(files))
+            )
     finally:
         if not config.debug:
             shutil.rmtree(tmpdir)

@@ -183,8 +183,10 @@ def main(args):
                 video_files, title, tmpdir)
             for title, video_files in episode_files.items()
         }
-
-        print("Output audio files to:\n" + "\n".join(sorted(list(audio_files))))
+        for title, files in audio_files.items():
+            print("Output audio files for {}:\n{}".format(
+                title, "\n".join(files))
+            )
 
     finally:
         if not config.debug:
@@ -194,8 +196,9 @@ def main(args):
                    "directory {}".format(tmpdir)))
 
     if config.upload:
-        print(("Uploading {} audio file(s)...".format(len(audio_files))))
-        for audio_file in audio_files:
-            _upload_file(audio_file)
+        print("Auto-uploader currently disabled.")
+        #print(("Uploading {} audio file(s)...".format(len(audio_files))))
+        #for audio_file in audio_files:
+        #    _upload_file(audio_file)
 
     print("Done.")
