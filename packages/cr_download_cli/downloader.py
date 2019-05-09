@@ -146,7 +146,7 @@ def main(args):
     vods = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=config.limit)
 
-    vods.sort(key=lambda vod: vod["recorded_at"])
+    vods.sort(key=lambda vod: vod["recorded_at"], reverse=True)
 
     print("{} vod(s) found.".format(len(vods)))
     for i, vod in enumerate(vods):
