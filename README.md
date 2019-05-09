@@ -1,7 +1,7 @@
 Overview
 =======================
 
-cr_download checks recent Geek and Sundry Twitch VODs for videos with
+cr_download checks recent Critical Role Twitch VODs for videos with
 titles looking like Critical Role episode titles, and prompts the user
 to download each one. The file is downloaded as video using the
 [streamlink](https://streamlink.github.io/) API, and converted to
@@ -41,14 +41,14 @@ Usage
 ==================================
 
 Run `critrole_download` (it should be added to your path after
-installation) to display a list of recent Geek & Sundry VODs. You may
+installation) to display a list of recent Critical Role VODs. You may
 choose one (or more) to download and convert to audio.
 
 To run the automatic audio editor on the downloaded files, run
 `critrole_download -a`.
 
 You can also run `autocut_vod FILENAME [FILENAME ...]` to run the
-autocutting tool on a local video file.
+autocutting tool on a local audio/video file.
 
 To see a full list of options for each command, run `critrole_download
 -h` or `autocut_vod -h`. You can also change the behavior of the

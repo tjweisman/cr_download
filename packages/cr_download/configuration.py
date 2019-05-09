@@ -71,7 +71,7 @@ def _load_config():
     try:
         with open(CONFIG_PATH, "r") as user_config_file:
             config.update(yaml.load(user_config_file))
-    except(IOError, FileNotFoundError):
+    except(IOError, OSError):
         _make_user_config_dir()
         with open(CONFIG_PATH, "w") as user_config_file:
             user_config_file.write(default_config_string)

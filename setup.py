@@ -9,7 +9,7 @@ with open(path.join(setup_dir, 'README.md'),
 
 setup(
     name="cr_download",
-    version="0.92a0",
+    version="0.92.1",
     package_dir={'':'packages'},
     packages=find_packages(),
 
