@@ -40,6 +40,8 @@ def merge_audio_files(files, output):
         subprocess.call([config.ffmpeg_path, "-hide_banner", "-f", "concat",
                          "-safe", "0", "-i", filelist.name, output])
 
+    return output
+
 def change_ext(filename, new_ext):
     """return a new filename, with the extension changed.
     """

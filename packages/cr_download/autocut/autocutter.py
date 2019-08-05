@@ -140,9 +140,12 @@ def recut_files(input_files, output_dir, episode_segments):
 
     input_audio = wav_sequence.open(input_files)
     current_frame = 0
-    print("recutting files...")
-    #wrap the wav_sequence in a progress bar somehow?
-    for name, intervals in progressbar(episode_segments):
+
+    if config.autocutter_verbosity > 0:
+        print("recutting files...")
+        episode_segments = progressbar(episode_segments)
+
+    for name, intervals in episode_segments:
         wavfile_name = os.path.join(
             output_dir,
             media_utils.change_ext(os.path.basename(name), ".wav"))
