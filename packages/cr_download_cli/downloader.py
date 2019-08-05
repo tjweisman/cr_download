@@ -54,7 +54,7 @@ def _downloader_argparser():
 
     # regex arguments
     download_args.add_argument("-r", "--regex", default=DEFAULT_CR_REGEX,
-                               help=""""what regex to use when filtering for
+                               help="""what regex to use when filtering for
                                CR vods""")
 
     download_args.add_argument("--strict", action="store_const",

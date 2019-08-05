@@ -57,7 +57,8 @@ def fingerprint_transition_times(
     ashift_frame_ct = 0
     ashift_frame_start = 0
 
-    print("Finding transition times...")
+    if config.autocutter_verbosity > 0:
+        print("Finding transition times...")
     for i, window in progressbar(
             enumerate(fingerprints.windows(window_time=window_time))):
 
@@ -72,6 +73,13 @@ def fingerprint_transition_times(
             ashift_frame_ct = 0
 
         if ashift_frame_ct >= config.autocut_time_threshold:
+
+            if config.autocutter_verbosity > 1:
+                print("Found cutting point for segment {} at {}".format(
+                    expected_sample,
+                    media_utils.display_timestamp(
+                        fingerprints.index_to_timestamp(ashift_frame_start))))
+
             ashift_frame_ct = 0
             transition_indices.append(ashift_frame_start)
 

@@ -76,6 +76,12 @@ class FingerprintSequence:
         """
         return int(self.samplerate * index / self.fingerprint_rate)
 
+    def index_to_timestamp(self, index):
+        """convert the index of a fingerprint to a timestamp (in seconds)
+
+        """
+        return int(index / self.fingerprint_rate)
+
 def _get_cache_filename(audio_files):
     basenames = [os.path.basename(afile) for afile in audio_files]
     return hashlib.md5("".join(basenames).encode("utf-8")).hexdigest()

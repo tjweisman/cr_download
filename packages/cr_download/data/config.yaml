@@ -12,6 +12,8 @@ audio_sequences:
 autocut_error_threshold: 0.22
 autocut_time_threshold: 2
 
+autocutter_verbosity: 1
+
 cutting_sequences:
         cut_intro: [C, C, C, C, K, C, C, C, K, C]
         keep_intro: [C, C, K, C, K, C, C, C, K, C]

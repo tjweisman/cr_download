@@ -102,3 +102,10 @@ def display_bytes(num_bytes):
         unit = "GB"
 
     return _bytes_in_units(num_bytes, unit) + unit
+
+def display_timestamp(num_seconds):
+    """get a string to conveniently display a timestamp"""
+    seconds = num_seconds % 60
+    minutes = int(num_seconds / 60) % 60
+    hrs = (num_seconds / 3600)
+    return "{}:{}:{}".format(hrs, minutes, seconds)
