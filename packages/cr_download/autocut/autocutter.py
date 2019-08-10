@@ -57,11 +57,14 @@ def fingerprint_transition_times(
     ashift_frame_ct = 0
     ashift_frame_start = 0
 
+    windows = enumerate(fingerprints.windows(window_time=window_time))
     if config.autocutter_verbosity > 0:
         print("Finding transition times...")
-    for i, window in progressbar(
-            enumerate(fingerprints.windows(window_time=window_time))):
 
+    if config.autocutter_verbosity == 1:
+        windows = progressbar(windows)
+
+    for i, window in windows:
         error = sample_prints[expected_sample].window_error(window)
 
         if ((transitioning and error > config.autocut_error_threshold) or

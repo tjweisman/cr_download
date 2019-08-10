@@ -109,5 +109,5 @@ def display_timestamp(num_seconds):
     """get a string to conveniently display a timestamp"""
     seconds = num_seconds % 60
     minutes = int(num_seconds / 60) % 60
-    hrs = (num_seconds / 3600)
+    hrs = int(num_seconds / 3600)
     return "{}:{}:{}".format(hrs, minutes, seconds)
