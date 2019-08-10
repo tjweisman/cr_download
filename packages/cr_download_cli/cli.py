@@ -10,8 +10,10 @@ from argparse import ArgumentParser
 from builtins import input
 
 from cr_download import media_utils
+from cr_download import metadata
 from cr_download.autocut import autocutter
 from cr_download.configuration import data as config
+
 
 _CONFIRM_YN_OPTION = {"Y":True, "N":False}
 _CONFIRM_YN_ORDER = "YN"
@@ -28,17 +30,16 @@ def suggest_filename(title, multiple_parts=False):
     the filenames for multiple parts of the episode.
 
     """
-    match = re.match(r".*Critical Role:? (Campaign (\d+):?)?,? Ep(isode)? ?(\d+).*",
-                     title, flags=re.I)
+
+    campaign, episode = metadata.parse_critrole_title(title)
+    ep_title = metadata.format_critrole_title(campaign, episode)
+
     wildcard = ""
     if multiple_parts:
         wildcard = "_part*"
-    if match:
-        campaign = "1"
-        if match.group(2):
-            campaign = match.group(2)
-        episode = int(match.group(4))
-        suggestion = "c{0}ep{1:03d}{2}.mp3".format(campaign, episode, wildcard)
+
+    if campaign or episode:
+        suggestion = "{}{}.mp3".format(ep_title, wildcard)
     else:
         suggestion = "tmp{}.mp3".format(wildcard)
 

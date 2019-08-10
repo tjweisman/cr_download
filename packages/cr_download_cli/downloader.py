@@ -11,6 +11,7 @@ import shutil
 from cr_download.configuration import data as config
 from cr_download import twitch_download
 from cr_download import media_utils
+from cr_download import metadata
 
 from . import cli
 
@@ -69,6 +70,10 @@ def _downloader_argparser():
 
     download_args.add_argument("-v", dest="verbose", action="store_true",
                                default=False, help="Show more details about vods")
+
+    download_args.add_argument("--metadata-file", help="""name of a YAML file that
+                               will be output with a description of each episode
+                               downloaded""")
 
 
     return parser
@@ -187,6 +192,13 @@ def main(args):
             print("Output audio files for {}:\n{}".format(
                 title, "\n".join(files))
             )
+
+        if config.metadata_file:
+            metadata.write_metadata_file(config.metadata_file,
+                                         audio_files,
+                                         to_download)
+
+
 
     finally:
         if not config.debug:
