@@ -57,10 +57,14 @@ def fingerprint_transition_times(
     ashift_frame_ct = 0
     ashift_frame_start = 0
 
-    print("Finding transition times...")
-    for i, window in progressbar(
-            enumerate(fingerprints.windows(window_time=window_time))):
+    windows = enumerate(fingerprints.windows(window_time=window_time))
+    if config.autocutter_verbosity > 0:
+        print("Finding transition times...")
 
+    if config.autocutter_verbosity == 1:
+        windows = progressbar(windows)
+
+    for i, window in windows:
         error = sample_prints[expected_sample].window_error(window)
 
         if ((transitioning and error > config.autocut_error_threshold) or
@@ -72,6 +76,13 @@ def fingerprint_transition_times(
             ashift_frame_ct = 0
 
         if ashift_frame_ct >= config.autocut_time_threshold:
+
+            if config.autocutter_verbosity > 1:
+                print("Found cutting point for segment {} at {}".format(
+                    expected_sample,
+                    media_utils.display_timestamp(
+                        fingerprints.index_to_timestamp(ashift_frame_start))))
+
             ashift_frame_ct = 0
             transition_indices.append(ashift_frame_start)
 
@@ -132,9 +143,12 @@ def recut_files(input_files, output_dir, episode_segments):
 
     input_audio = wav_sequence.open(input_files)
     current_frame = 0
-    print("recutting files...")
-    #wrap the wav_sequence in a progress bar somehow?
-    for name, intervals in progressbar(episode_segments):
+
+    if config.autocutter_verbosity > 0:
+        print("recutting files...")
+        episode_segments = progressbar(episode_segments)
+
+    for name, intervals in episode_segments:
         wavfile_name = os.path.join(
             output_dir,
             media_utils.change_ext(os.path.basename(name), ".wav"))
