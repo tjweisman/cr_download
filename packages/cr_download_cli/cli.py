@@ -125,6 +125,9 @@ def videos_to_episode_audio(video_files, title, tmpdir):
 
     """
 
+    #TODO: don't bother to split into .wav files if we're not
+    #autocutting
+
     episodes = []
     for filename in video_files:
         episodes.append(

@@ -12,7 +12,7 @@ from datetime import timedelta
 import re
 
 import requests
-import streamlink
+import youtube_dl
 
 from cr_download.configuration import data as config
 from cr_download import stream_data
@@ -33,8 +33,7 @@ MAX_RESULTS_PER_PAGE = 50
 
 CRITROLE_YOUTUBE_ID = "UCpXBGqwsBkpvcYjsJBQ7LEQ"
 
-DEFAULT_STREAM_QUALITY = "audio_mp4"
-
+DEFAULT_STREAM_QUALITY = "bestaudio/worst"
 
 def _parse_iso_duration(duration):
     match = ISO_REGEX.match(duration)
@@ -45,6 +44,20 @@ def _parse_iso_duration(duration):
         return timedelta(hours=int(hrs), minutes=int(mins), seconds=int(secs))
 
 class YoutubeStreamData(stream_data.StreamData):
+    def __init__(self, *args, **kwargs):
+        super(YoutubeStreamData, self).__init__(*args, **kwargs)
+        output_filename = ""
+
+    #it's actually absurd that the youtube_dl API doesn't have an
+    #obvious way to access the final filename except through a
+    #progress hook, even though the download method blocks. something
+    #is stupid here.
+
+    #I hope this isn't threaded or else this is even more dumb.
+    def download_hook(self, d):
+        if d['status'] == 'finished' or d['status'] == 'downloading':
+            self.output_filename = d['filename']
+
     def load_data(self, data):
         self.json_data = data
         self.title = data["snippet"]["title"]
@@ -56,6 +69,18 @@ class YoutubeStreamData(stream_data.StreamData):
 
         self.url = YOUTUBE_VIDEO_URL + data["id"]
         self.stream = DEFAULT_STREAM_QUALITY
+
+    def download(self, output):
+        ydl_options = {"format":DEFAULT_STREAM_QUALITY,
+                       "outtmpl":"{}.%(ext)s".format(output),
+                       "progress_hooks":[lambda d: self.download_hook(d)]
+        }
+
+        with youtube_dl.YoutubeDL(ydl_options) as ydl:
+            ydl.download([self.url])
+
+        return self.output_filename
+
 
 def get_video_data(ids):
     params = {"part":"contentDetails,snippet",

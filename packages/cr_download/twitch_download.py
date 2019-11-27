@@ -47,13 +47,11 @@ class TwitchStreamData(stream_data.StreamData):
         self.url = data["url"]
         self.stream = DEFAULT_STREAM_QUALITY
 
-    def download(self, output_filename, output_progress=True):
-        oauth_token = _get_oauth_token()
-        session = streamlink.Streamlink()
-        session.set_plugin_option("twitch", "oauth-token", oauth_token)
-        super(TwitchStreamData, self).download(output_filename,
-                                               session=session,
-                                               output_progress=output_progress)
+    def download(self, filename, output_progress=True):
+        output_filename = filename + ".mp4"
+        download_twitch_vod(self.url, DEFAULT_STREAM_QUALITY,
+                            output_filename, output_progress=output_progress)
+        return output_filename
 
 def _get_oauth_token():
     try:
@@ -97,7 +95,47 @@ def get_vod_list(cr_filter=None, limit=10):
 
     return [TwitchStreamData(vod) for vod in vods]
 
+def _download_progress_bar():
+    widgets = [
+        'Downloaded: ',
+        progressbar.DataSize(),
+        '(',
+        progressbar.FileTransferSpeed(),
+        ')'
+    ]
+    return progressbar.ProgressBar(widgets=widgets)
 
+def download_twitch_vod(url, stream_name, output_filename,
+                        buffer_size=8192, output_progress=True):
+    """download a video object to the given output file.
+    """
+    oauth_token = _get_oauth_token()
+    session = streamlink.Streamlink()
+    session.set_plugin_option("twitch", "oauth-token", oauth_token)
+
+    streams = session.streams(url)
+
+    if streams and stream_name in streams:
+        stream = streams[stream_name]
+    else:
+        raise StreamException("Could not find stream {1} at url {2}".format(
+            stream_name, url))
+
+    total_downloaded = 0
+    with stream.open() as stream_file, open(output_filename, "wb") as output_file:
+        if output_progress:
+            progress_bar = _download_progress_bar()
+
+        chunk = stream_file.read(buffer_size)
+
+        while chunk:
+            total_downloaded += len(chunk)
+
+            if output_progress:
+                progress_bar.update(total_downloaded)
+
+            output_file.write(chunk)
+            chunk = stream_file.read(buffer_size)
 
 # try and set token as soon as the module is loaded so that the user
 # knows to configure it if necessary. NOTE: this should be changed if

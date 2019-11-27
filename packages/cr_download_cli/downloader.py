@@ -97,10 +97,9 @@ def download_streams(base_name, to_download, dst_dir):
     video_files = []
     video_base = media_utils.change_ext(base_name, "")
     for i, stream in enumerate(to_download):
-        filename = os.path.join(dst_dir, "{}{:02}.mp4".format(video_base, i))
-        stream.download(filename)
-        #twitch_download.download_video(vod, filename)
-        video_files.append(filename)
+        filename = os.path.join(dst_dir, "{}{:02}".format(video_base, i))
+        output_filename = stream.download(filename)
+        video_files.append(output_filename)
 
     return video_files
 

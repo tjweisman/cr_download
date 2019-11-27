@@ -17,7 +17,6 @@ configure the appropriate streamlink plugin used to download the video
 
 """
 
-import streamlink
 import progressbar
 
 StreamException = Exception
@@ -42,44 +41,5 @@ class StreamData:
     def __setitem__(self, key):
         setattr(self, key)
 
-    def download(self, output_filename, buffer_size=8192,
-                 session=None, output_progress=True):
-        """download a video object to the given output file.
-        """
-        if not session:
-            session = streamlink.Streamlink()
-
-        streams = session.streams(self.url)
-
-        if streams and self.stream in streams:
-            stream = streams[self.stream]
-        else:
-            raise StreamException("Could not find stream {1} at url {2}".format(
-                self.stream, self.url))
-
-        total_downloaded = 0
-        with stream.open() as stream_file, open(output_filename, "wb") as output_file:
-            if output_progress:
-                progress_bar = _download_progress_bar()
-
-            chunk = stream_file.read(buffer_size)
-
-            while chunk:
-                total_downloaded += len(chunk)
-
-                if output_progress:
-                    progress_bar.update(total_downloaded)
-
-                output_file.write(chunk)
-                chunk = stream_file.read(buffer_size)
-
-
-def _download_progress_bar():
-    widgets = [
-        'Downloaded: ',
-        progressbar.DataSize(),
-        '(',
-        progressbar.FileTransferSpeed(),
-        ')'
-    ]
-    return progressbar.ProgressBar(widgets=widgets)
+    def download(self, output_filename):
+        pass
