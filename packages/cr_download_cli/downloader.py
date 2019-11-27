@@ -85,60 +85,63 @@ def _upload_file(title):
     print((ostr.format(title)))
     drive_upload.single_xfer_upload(title)
 
-def download_vods(base_name, to_download, dst_dir):
-    """Download video files for the vods specified in TO_DOWNLOAD.
+def download_streams(base_name, to_download, dst_dir):
+    """Download video files for the streams specified in to_download.
 
     """
     video_files = []
     video_base = media_utils.change_ext(base_name, "")
-    for i, vod in enumerate(to_download):
+    for i, stream in enumerate(to_download):
         filename = os.path.join(dst_dir, "{}{:02}.mp4".format(video_base, i))
-        twitch_download.download_video(vod, filename)
+        stream.download(filename)
+        #twitch_download.download_video(vod, filename)
         video_files.append(filename)
 
     return video_files
 
 
-def vod_index_select(vods, split_episodes):
+def stream_index_select(streams, split_episodes):
     to_download = {}
-    index = input("Select a vod to download (hit enter to not"
-                  " download any vods): ")
+    index = input("Select a stream to download (hit enter to not"
+                  " download any streams): ")
     try:
-        if int(index) > 0 and int(index) <= len(vods):
-            title = cli.prompt_title(vods[int(index) - 1]["title"],
+        if int(index) > 0 and int(index) <= len(streams):
+            title = cli.prompt_title(streams[int(index) - 1]["title"],
                                      multiple_parts=split_episodes)
-            to_download[title] = [vods[int(index) - 1]]
+            to_download[title] = [streams[int(index) - 1]]
     except ValueError:
         pass
 
     return to_download
 
 
-def vod_confirm_select(vods, merge_files, split_episodes):
-    """Prompt the user to confirm downloading each vod from a given list.
+def stream_confirm_select(streams, merge_files, split_episodes):
+    """Prompt the user to confirm downloading each stream from a given list.
 
     The user is then given a prompt for a filename to save each one under.
 
     """
     to_download = {}
 
-    episode_vods = []
-    for vod in vods:
-        print("Possible CR Episode found: {}".format(vod["title"]))
-        print("Length: {}".format(timedelta(seconds=int(vod["length"]))))
+    episode_streams = []
+    for stream in streams:
+        print("Possible CR Episode found: {}".format(stream["title"]))
+        print("Length: {}".format(timedelta(seconds=int(stream["length"]))))
 
-        if cli.confirm("Download vod?"):
+        if cli.confirm("Download stream?"):
             if not merge_files:
-                title = cli.prompt_title(vod["title"], split_episodes)
-                to_download[title] = [vod]
+                title = cli.prompt_title(stream["title"], split_episodes)
+                to_download[title] = [stream]
             else:
-                episode_vods.append(vod)
+                episode_streams.append(stream)
 
-    if merge_files and episode_vods:
-        title = cli.prompt_title(episode_vods[0]["title"], split_episodes)
-        to_download[title] = episode_vods
+    if merge_files and episode_streams:
+        title = cli.prompt_title(episode_streams[0]["title"], split_episodes)
+        to_download[title] = episode_streams
 
     return to_download
+
+
 
 def main(args):
     parser = _downloader_argparser()
@@ -148,40 +151,40 @@ def main(args):
     if config.index_select:
         cr_filter = None
 
-    vods = twitch_download.get_vod_list(cr_filter=cr_filter,
+    streams = twitch_download.get_vod_list(cr_filter=cr_filter,
                                         limit=config.limit)
 
-    vods.sort(key=lambda vod: vod["recorded_at"], reverse=True)
+    streams.sort(key=lambda stream: stream["creation_date"], reverse=True)
 
-    print("{} vod(s) found.".format(len(vods)))
-    for i, vod in enumerate(vods):
+    print("{} stream(s) found.".format(len(streams)))
+    for i, stream in enumerate(streams):
         print("{}. ({}) {}".format(i+1,
-                                   timedelta(seconds=int(vod["length"])),
-                                   vod["title"]))
+                                   timedelta(seconds=int(stream["length"])),
+                                   stream["title"]))
 
     split_episodes = (config.autocut and not config.autocut_merge)
 
     if config.index_select:
-        to_download = vod_index_select(vods, split_episodes)
+        to_download = stream_index_select(streams, split_episodes)
     else:
-        to_download = vod_confirm_select(vods, config.merge,
+        to_download = stream_confirm_select(streams, config.merge,
                                          split_episodes)
 
-    num_vods = sum([len(ep_vods) for ep_vods in to_download.values()])
+    num_streams = sum([len(ep_streams) for ep_streams in to_download.values()])
 
     tmpdir = tempfile.mkdtemp()
 
     if config.cleanup:
-        vod_dir = tmpdir
+        stream_dir = tmpdir
     else:
-        vod_dir = "."
+        stream_dir = "."
 
     try:
-        print(("Downloading {} vod(s)...".format(num_vods)))
-        episode_files = {title: download_vods(title, vods, vod_dir)
-                         for title, vods in to_download.items()}
+        print(("Downloading {} stream(s)...".format(num_streams)))
+        episode_files = {title: download_streams(title, streams, stream_dir)
+                         for title, streams in to_download.items()}
 
-        print("Converting vod(s) to audio...")
+        print("Converting stream(s) to audio...")
 
         audio_files = {
             title: cli.videos_to_episode_audio(

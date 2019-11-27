@@ -1,10 +1,14 @@
 """twitch_download.py
 
-This module uses the twitch API to retrieve information about the Geek
-and Sundry channel, present the user with videos that are likely to be
-Critical Role uploads, and download a Critical Role VOD.
+This module uses the twitch API to retrieve information about the
+Critical Role Twitch channel, present the user with videos that are
+likely to be Critical Role uploads, and download a Critical Role VOD.
 
 Once again this code is super brittle.
+
+NOTE: ever since Twitch broke API access to restricted streams from
+3rd-party apps, this code DOES NOT WORK, and will need to be retested
+if Twitch ever chooses to fix it.
 
 """
 
@@ -18,6 +22,7 @@ import streamlink
 import progressbar
 
 from cr_download.configuration import data as config
+from cr_download import stream_data
 
 TwitchException = Exception
 
@@ -30,6 +35,24 @@ HEADERS = {"Client-ID" : TWITCH_CLIENT_ID,
 DEFAULT_STREAM_QUALITY = "audio"
 
 UNCONFIGURED_TOKEN = "YOUR_TOKEN_HERE"
+
+class TwitchStreamData(stream_data.StreamData):
+    def load_data(self, data):
+        super(TwitchStreamData, self).load_data(data)
+
+        self.title = data["title"]
+        self.creation_date = data["recorded_at"]
+        self.length = data["length"]
+        self.url = data["url"]
+        self.stream = DEFAULT_STREAM_QUALITY
+
+    def download(self, output_filename, output_progress=True):
+        oauth_token = _get_oauth_token()
+        session = streamlink.Streamlink()
+        session.set_plugin_option("twitch", "oauth-token", oauth_token)
+        super(TwitchStreamData, self).download(output_filename,
+                                               session=session,
+                                               output_progress=output_progress)
 
 def _get_oauth_token():
     try:
@@ -71,7 +94,7 @@ def get_vod_list(cr_filter=None, limit=10):
         vods = [vod for vod in vods if re.match(cr_filter, vod["title"],
                                                 flags=re.I)]
 
-    return vods
+    return [TwitchStreamData(vod) for vod in vods]
 
 def _download_progress_bar():
     widgets = [
@@ -85,35 +108,8 @@ def _download_progress_bar():
 
 def download_video(video, filename, buffer_size=8192,
                    output_progress=True):
-    """download a video object to the given output file.
-    """
-    oauth_token = _get_oauth_token()
-    session = streamlink.Streamlink()
-    session.set_plugin_option("twitch", "oauth-token", oauth_token)
 
-    streams = session.streams(video["url"])
 
-    if streams and DEFAULT_STREAM_QUALITY in streams:
-        stream = streams[DEFAULT_STREAM_QUALITY]
-    else:
-        raise TwitchException("Could not find stream {1} at url {2}".format(
-            DEFAULT_STREAM_QUALITY, video["url"]))
-
-    total_downloaded = 0
-    with stream.open() as stream_file, open(filename, "wb") as output_file:
-        if output_progress:
-            progress_bar = _download_progress_bar()
-
-        chunk = stream_file.read(buffer_size)
-
-        while chunk:
-            total_downloaded += len(chunk)
-
-            if output_progress:
-                progress_bar.update(total_downloaded)
-
-            output_file.write(chunk)
-            chunk = stream_file.read(buffer_size)
 
 # try and set token as soon as the module is loaded so that the user
 # knows to configure it if necessary. NOTE: this should be changed if

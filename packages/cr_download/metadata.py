@@ -16,6 +16,10 @@ yaml = YAML(typ="safe")
 def parse_critrole_title(title):
     """parse a critical role episode title to extract campaign and episode #"""
 
+    #TODO: match both YouTube and Twitch patterns, and return a
+    #dictionary which optionally contains the actual episode title
+    #(instead of an ordered pair)
+
     match = re.match(r".*Critical Role:? (Campaign (\d+):?)?,? Ep(isode)? ?(\d+).*",
                      title, flags=re.I)
 
@@ -54,23 +58,23 @@ def format_critrole_title(campaign, episode, short=True):
     return " ".join([campaign_str, ep_str])
 
 
-def write_metadata_file(output_file, audio_files, vods):
+def write_metadata_file(output_file, audio_files, streams):
     """write a YAML file to output_file with an entry for each audio file
     provided.
 
     audio_files: dict of arrays of files downloaded (indexed by
     filename, possibly with wildcard)
 
-    vods: dict of arrays of twitch vod dicts, also indexed by filename
-    (with wildcard if present)
+    streams: dict of arrays of stream_data dicts, also indexed by
+    filename (with wildcard if present)
 
     """
     episodes = {}
     for title, files in audio_files.items():
         part = 1
         for audio_file in files:
-            vod  = vods[title][0]
-            campaign, episode = parse_critrole_title(vod["title"])
+            stream  = streams[title][0]
+            campaign, episode = parse_critrole_title(stream["title"])
             ep_title = format_critrole_title(campaign, episode, short=False)
             ep_id = format_critrole_title(campaign, episode)
             if len(files) > 1:
@@ -80,7 +84,7 @@ def write_metadata_file(output_file, audio_files, vods):
             ep = {}
             ep["title"] = ep_title
             ep["id"] = ep_id
-            ep["airdate"] = vod["recorded_at"]
+            ep["airdate"] = stream["creation_date"]
             ep["file"] = os.path.abspath(audio_file)
 
             episodes[ep_id] = ep
