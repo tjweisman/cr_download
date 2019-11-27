@@ -6,6 +6,7 @@ from datetime import timedelta
 from argparse import ArgumentParser
 import tempfile
 import os
+import re
 import shutil
 
 from cr_download.configuration import data as config
@@ -145,7 +146,9 @@ def stream_confirm_select(streams, merge_files, split_episodes):
 
     return to_download
 
-
+def filter_stream_list(streams, title_regex):
+    return [stream for stream in streams
+            if re.match(title_regex, stream["title"], flags=re.I)]
 
 def main(args):
     parser = _downloader_argparser()
@@ -158,11 +161,13 @@ def main(args):
     if config.source == "youtube":
         streams = youtube.get_recent_channel_uploads(limit=config.limit)
     elif config.source == "twitch":
-        streams = twitch_download.get_vod_list(cr_filter=cr_filter,
-                                               limit=config.limit)
+        streams = twitch_download.get_vod_list(limit=config.limit)
     else:
         raise Exception(
             "Invalid stream source specified: {}".format(config.source))
+
+    if cr_filter:
+        streams = filter_stream_list(streams, cr_filter)
 
     streams.sort(key=lambda stream: stream["creation_date"], reverse=True)
 

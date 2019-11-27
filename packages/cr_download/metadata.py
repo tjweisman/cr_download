@@ -16,46 +16,51 @@ yaml = YAML(typ="safe")
 def parse_critrole_title(title):
     """parse a critical role episode title to extract campaign and episode #"""
 
-    #TODO: match both YouTube and Twitch patterns, and return a
-    #dictionary which optionally contains the actual episode title
-    #(instead of an ordered pair)
+    ep_data = {}
 
-    match = re.match(r".*Critical Role:? (Campaign (\d+):?)?,? Ep(isode)? ?(\d+).*",
-                     title, flags=re.I)
+    campaign_regex = "(?:Campaign (?P<campaign>\d+))?"
+    episode_regex = "Ep(?:isode)? ?(?P<episode>\d+)"
 
-    campaign, episode = None, None
+    cr_regex = re.compile("(?P<title>.*)[ |,:]*Critical Role[ |,:]*" +
+                          campaign_regex + "[ |,:]*" + episode_regex,
+                          flags=re.I)
+
+    match = cr_regex.match(title)
 
     if match:
-        campaign = "1"
-        if match.group(2):
-            campaign = match.group(2)
-        episode = int(match.group(4))
+        ep_data["campaign"] = match.group("campaign")
+        ep_data["episode"] = int(match.group("episode"))
+        ep_data["title"] = match.group("title")
 
-    return (campaign, episode)
+    return ep_data
 
 
-def format_critrole_title(campaign, episode, short=True):
+def format_critrole_title(ep_data, short=True):
     """format a critical role episode title into either a short or long
     format
 
     """
     campaign_str = ""
     ep_str = ""
-    if campaign:
+    if "campaign" in ep_data:
         if short:
-            campaign_str = "c{0}".format(campaign)
+            campaign_str += "c{0}".format(ep_data["campaign"])
         else:
-            campaign_str = "Campaign {}".format(campaign)
-    if episode:
+            campaign_str += "Campaign {}".format(ep_data["campaign"])
+    if "episode" in ep_data:
         if short:
-            ep_str = "ep{:03d}".format(episode)
+            ep_str = "ep{:03d}".format(ep_data["episode"])
         else:
-            ep_str = "Episode {}".format(episode)
+            ep_str = "Episode {}".format(ep_data["episode"])
 
     if short:
         return campaign_str + ep_str
 
-    return " ".join([campaign_str, ep_str])
+    ep_title = " ".join([campaign_str, ep_str])
+    if "title" in ep_data:
+        ep_title += ": " + ep_data["title"]
+
+    return ep_title
 
 
 def write_metadata_file(output_file, audio_files, streams):
@@ -74,8 +79,8 @@ def write_metadata_file(output_file, audio_files, streams):
         part = 1
         for audio_file in files:
             stream  = streams[title][0]
-            campaign, episode = parse_critrole_title(stream["title"])
-            ep_title = format_critrole_title(campaign, episode, short=False)
+            episode_name_data = parse_critrole_title(stream["title"])
+            ep_title = format_critrole_title(episode_name_data, short=False)
             ep_id = format_critrole_title(campaign, episode)
             if len(files) > 1:
                 ep_title += " part {}".format(part)

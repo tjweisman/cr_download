@@ -31,14 +31,14 @@ def suggest_filename(title, multiple_parts=False):
 
     """
 
-    campaign, episode = metadata.parse_critrole_title(title)
-    ep_title = metadata.format_critrole_title(campaign, episode)
+    episode_name_data = metadata.parse_critrole_title(title)
+    ep_title = metadata.format_critrole_title(episode_name_data)
 
     wildcard = ""
     if multiple_parts:
         wildcard = "_part*"
 
-    if campaign or episode:
+    if len(episode_name_data) > 0:
         suggestion = "{}{}.mp3".format(ep_title, wildcard)
     else:
         suggestion = "tmp{}.mp3".format(wildcard)

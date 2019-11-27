@@ -219,15 +219,19 @@ def autocut(audio_files, output_file):
     """
 
     if config.cutting_sequence:
-        cutting_sequence = config.cutting_sequences[config.cutting_sequence]
+        cutting_sequence = config.cutting_sequences[config.source][
+            config.cutting_sequence
+        ]
+
     else:
-        cutting_sequence = config.cutting_sequences[
+        cutting_sequence = config.cutting_sequences[config.source][
             config.default_cutting_sequence
         ]
 
     pcm_intervals = intervals_to_keep(
-        get_transition_times(audio_files,
-                             config.audio_sequences[config.audio_sequence]),
+        get_transition_times(
+            audio_files,
+            config.audio_sequences[config.source][config.audio_sequence]),
         cutting_sequence
     )
 

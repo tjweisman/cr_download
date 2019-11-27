@@ -60,6 +60,11 @@ def _get_oauth_token():
     except AttributeError:
         pass
 
+    #if we're not using twitch as a video source, we can ignore an
+    #unconfigured token
+    if config.stream != "twitch":
+        return None
+
     print("This application is not yet authorized to access "
           "your Twitch account! Run "
           "'streamlink --twitch-oauth-authenticate' "
@@ -77,7 +82,7 @@ def get_channel_id(channel_name):
                             headers=HEADERS, params=params)
     return response.json()["users"][0]["_id"]
 
-def get_vod_list(cr_filter=None, limit=10):
+def get_vod_list(limit=10):
     """get JSON array of past broadcast VODs on the G&S channel, most
     recent first
 
@@ -88,10 +93,6 @@ def get_vod_list(cr_filter=None, limit=10):
     url = "https://api.twitch.tv/kraken/channels/{}/videos".format(channel_id)
     response = requests.get(url, headers=HEADERS, params=params)
     vods = response.json()["videos"]
-
-    if cr_filter is not None:
-        vods = [vod for vod in vods if re.match(cr_filter, vod["title"],
-                                                flags=re.I)]
 
     return [TwitchStreamData(vod) for vod in vods]
 
