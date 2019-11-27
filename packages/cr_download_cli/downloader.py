@@ -10,6 +10,7 @@ import shutil
 
 from cr_download.configuration import data as config
 from cr_download import twitch_download
+from cr_download import youtube
 from cr_download import media_utils
 from cr_download import metadata
 
@@ -52,6 +53,10 @@ def _downloader_argparser():
                                help="""Set max number of VODs to retrieve
                                when searching for CR episodes (default: 10)""")
 
+    download_args.add_argument("-s", "--source", default="youtube",
+                               help="""where to look for recent
+                               Critical Role streams (twitch or
+                               youtube). Default: youtube""")
 
     # regex arguments
     download_args.add_argument("-r", "--regex", default=DEFAULT_CR_REGEX,
@@ -126,7 +131,7 @@ def stream_confirm_select(streams, merge_files, split_episodes):
     episode_streams = []
     for stream in streams:
         print("Possible CR Episode found: {}".format(stream["title"]))
-        print("Length: {}".format(timedelta(seconds=int(stream["length"]))))
+        print("Length: {}".format(stream["length"]))
 
         if cli.confirm("Download stream?"):
             if not merge_files:
@@ -151,15 +156,20 @@ def main(args):
     if config.index_select:
         cr_filter = None
 
-    streams = twitch_download.get_vod_list(cr_filter=cr_filter,
-                                        limit=config.limit)
+    if config.source == "youtube":
+        streams = youtube.get_recent_channel_uploads(limit=config.limit)
+    elif config.source == "twitch":
+        streams = twitch_download.get_vod_list(cr_filter=cr_filter,
+                                               limit=config.limit)
+    else:
+        raise Exception(
+            "Invalid stream source specified: {}".format(config.source))
 
     streams.sort(key=lambda stream: stream["creation_date"], reverse=True)
 
     print("{} stream(s) found.".format(len(streams)))
     for i, stream in enumerate(streams):
-        print("{}. ({}) {}".format(i+1,
-                                   timedelta(seconds=int(stream["length"])),
+        print("{}. ({}) {}".format(i+1, stream["length"],
                                    stream["title"]))
 
     split_episodes = (config.autocut and not config.autocut_merge)

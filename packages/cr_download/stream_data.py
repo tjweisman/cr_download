@@ -11,14 +11,19 @@ single interface for the downloader.
 Derived classes should override the load_data method and convert the
 data dict into the fields which are set in the __init__ method here.
 
+It might also be necessary to override the download method to
+configure the appropriate streamlink plugin used to download the video
+(e.g. to set up Twitch authentication if downloading a Twitch stream)
+
 """
 
 import streamlink
+import progressbar
+
+StreamException = Exception
 
 class StreamData:
     def __init__(self, data):
-        self.json_data = data
-
         #these should all be in human-readable format
         self.title = ""
         self.creation_date = ""
@@ -26,10 +31,10 @@ class StreamData:
         self.url = ""
         self.stream = ""
 
-        load_data(self, data)
+        self.load_data(data)
 
     def load_data(self, data):
-        pass
+        self.json_data = data
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -41,19 +46,19 @@ class StreamData:
                  session=None, output_progress=True):
         """download a video object to the given output file.
         """
-        if not streamlink_session:
+        if not session:
             session = streamlink.Streamlink()
 
-        streams = session.streams(video["url"])
+        streams = session.streams(self.url)
 
         if streams and self.stream in streams:
             stream = streams[self.stream]
         else:
-            raise TwitchException("Could not find stream {1} at url {2}".format(
-                self.stream, video["url"]))
+            raise StreamException("Could not find stream {1} at url {2}".format(
+                self.stream, self.url))
 
         total_downloaded = 0
-        with stream.open() as stream_file, open(filename, "wb") as output_file:
+        with stream.open() as stream_file, open(output_filename, "wb") as output_file:
             if output_progress:
                 progress_bar = _download_progress_bar()
 
@@ -67,3 +72,14 @@ class StreamData:
 
                 output_file.write(chunk)
                 chunk = stream_file.read(buffer_size)
+
+
+def _download_progress_bar():
+    widgets = [
+        'Downloaded: ',
+        progressbar.DataSize(),
+        '(',
+        progressbar.FileTransferSpeed(),
+        ')'
+    ]
+    return progressbar.ProgressBar(widgets=widgets)

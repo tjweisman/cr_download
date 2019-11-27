@@ -14,17 +14,15 @@ if Twitch ever chooses to fix it.
 
 from __future__ import print_function
 
+from datetime import timedelta
 import sys
 import re
 
 import requests
 import streamlink
-import progressbar
 
 from cr_download.configuration import data as config
 from cr_download import stream_data
-
-TwitchException = Exception
 
 TWITCH_CLIENT_ID = "ignduriqallck9hugiw15zfaqdvgwc"
 CRITROLE_TWITCH_CHANNEL = "criticalrole"
@@ -38,11 +36,14 @@ UNCONFIGURED_TOKEN = "YOUR_TOKEN_HERE"
 
 class TwitchStreamData(stream_data.StreamData):
     def load_data(self, data):
-        super(TwitchStreamData, self).load_data(data)
+        #hold onto all of the data in the Twitch json object, just in
+        #case we want to use it later
+        self.json_data = data
 
         self.title = data["title"]
         self.creation_date = data["recorded_at"]
-        self.length = data["length"]
+
+        self.length = str(timedelta(seconds=int(data["length"])))
         self.url = data["url"]
         self.stream = DEFAULT_STREAM_QUALITY
 
@@ -95,19 +96,6 @@ def get_vod_list(cr_filter=None, limit=10):
                                                 flags=re.I)]
 
     return [TwitchStreamData(vod) for vod in vods]
-
-def _download_progress_bar():
-    widgets = [
-        'Downloaded: ',
-        progressbar.DataSize(),
-        '(',
-        progressbar.FileTransferSpeed(),
-        ')'
-    ]
-    return progressbar.ProgressBar(widgets=widgets)
-
-def download_video(video, filename, buffer_size=8192,
-                   output_progress=True):
 
 
 
