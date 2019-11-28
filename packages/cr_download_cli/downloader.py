@@ -158,8 +158,10 @@ def main(args):
     if config.index_select:
         cr_filter = None
 
+    print("Retrieving recent streams...")
+
     if config.source == "youtube":
-        streams = youtube.get_recent_channel_uploads(limit=config.limit)
+        streams = youtube.get_recent_critrole_videos(limit=config.limit)
     elif config.source == "twitch":
         streams = twitch_download.get_vod_list(limit=config.limit)
     else:
@@ -214,8 +216,6 @@ def main(args):
             metadata.write_metadata_file(config.metadata_file,
                                          audio_files,
                                          to_download)
-
-
 
     finally:
         if not config.debug:

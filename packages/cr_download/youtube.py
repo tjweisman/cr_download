@@ -25,13 +25,15 @@ YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/"
 
 VIDEO_QUERY = "videos"
 CHANNEL_QUERY = "channels"
-PLAYLIST_QUERY = "playlistItems"
+PLAYLIST_ITEM_QUERY = "playlistItems"
+PLAYLIST_QUERY = "playlists"
 
 YOUTUBE_VIDEO_URL = "https://www.youtube.com/watch?v="
 
 MAX_RESULTS_PER_PAGE = 50
 
 CRITROLE_YOUTUBE_ID = "UCpXBGqwsBkpvcYjsJBQ7LEQ"
+CRITROLE_CAMPAIGN_PLAYLIST = "Campaign 2: The Mighty Nein"
 
 DEFAULT_STREAM_QUALITY = "bestaudio/worst"
 
@@ -95,8 +97,12 @@ def get_video_data(ids):
     return [YoutubeStreamData(video)
             for video in response.json()["items"]]
 
+def get_playlist_video_ids(playlist_id, limit=10, reverse=True):
+    """get video ids for items in the given playlist.
 
-def get_playlist_video_ids(playlist_id, limit=10):
+    if limit is negative, get everything in the list.
+
+    """
     params = {"part":"contentDetails",
               "playlistId":playlist_id,
               "key":YOUTUBE_API_KEY
@@ -104,11 +110,30 @@ def get_playlist_video_ids(playlist_id, limit=10):
 
     video_ids = []
 
-    while len(video_ids) < limit:
-        max_results = min(limit - len(video_ids), MAX_RESULTS_PER_PAGE)
+    initial_query = True
+
+    if reverse:
+        return get_playlist_video_ids(
+            playlist_id, limit=-1, reverse=False
+        )[-1 * limit:]
+
+    while (initial_query or
+           ("nextPageToken" in response.json() and
+            (len(video_ids) < limit or limit < 0))):
+
+        if not initial_query:
+            params["pageToken"] = response.json()["nextPageToken"]
+
+        initial_query = False
+
+        if limit > 0:
+            max_results = min(limit - len(video_ids), MAX_RESULTS_PER_PAGE)
+        else:
+            max_results = MAX_RESULTS_PER_PAGE
+
         params["maxResults"] = max_results
 
-        response = requests.get(YOUTUBE_API_URL + PLAYLIST_QUERY,
+        response = requests.get(YOUTUBE_API_URL + PLAYLIST_ITEM_QUERY,
                                 params=params)
         response.raise_for_status()
 
@@ -117,7 +142,32 @@ def get_playlist_video_ids(playlist_id, limit=10):
 
     return video_ids
 
-def get_recent_channel_uploads(limit=10):
+def get_critrole_main_playlist_id():
+    """find the playlist id for the main Critical Role campaign playlist"""
+    params = {"part":"snippet",
+              "channelId":CRITROLE_YOUTUBE_ID,
+              "key":YOUTUBE_API_KEY}
+
+    initial_query = True
+    while initial_query or "nextPageToken" in response.json():
+        initial_query = False
+        response = requests.get(YOUTUBE_API_URL + PLAYLIST_QUERY, params=params)
+        response.raise_for_status()
+
+        for playlist in response.json()["items"]:
+            if re.match(CRITROLE_CAMPAIGN_PLAYLIST,
+                        playlist["snippet"]["title"]):
+                return playlist["id"]
+
+        params["pageToken"] = response.json()["nextPageToken"]
+
+def get_critrole_upload_playlist_id():
+    """find the playlist id for the playlist of all uploads to the
+    Critical Role channel.
+
+    """
+
+
     params={"part":"contentDetails",
             "id":CRITROLE_YOUTUBE_ID,
             "key":YOUTUBE_API_KEY}
@@ -125,9 +175,24 @@ def get_recent_channel_uploads(limit=10):
     response = requests.get(YOUTUBE_API_URL + CHANNEL_QUERY, params=params)
     response.raise_for_status()
 
-    videos = []
-    #channel ids are supposed to be unique, but we'll loop anyway
     for item in response.json()["items"]:
-        playlist_id = item["contentDetails"]["relatedPlaylists"]["uploads"]
-        video_ids = get_playlist_video_ids(playlist_id, limit=limit)
-        return get_video_data(video_ids)
+        return item["contentDetails"]["relatedPlaylists"]["uploads"]
+
+def get_recent_critrole_videos(limit=10):
+    """retrieve an array of json objects representing recent uploads to the
+    Critical Role Mighty Nein playlist.
+
+    If for some reason the Mighty Nein playlist isn't available, get
+    an array of json objects representing recent uploads to the
+    Critical Role channel.
+    """
+
+    cr_playlist_id = get_critrole_main_playlist_id()
+
+    if cr_playlist_id:
+        video_ids = get_playlist_video_ids(cr_playlist_id, limit=limit, reverse=True)
+    else:
+        cr_playlist_id = get_critrole_upload_playlist_id()
+        video_ids = get_playlist_video_ids(cr_playlist_id, limit=limit)
+
+    return get_video_data(video_ids)

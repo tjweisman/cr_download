@@ -62,7 +62,7 @@ def _get_oauth_token():
 
     #if we're not using twitch as a video source, we can ignore an
     #unconfigured token
-    if config.stream != "twitch":
+    if config.source != "twitch":
         return None
 
     print("This application is not yet authorized to access "
