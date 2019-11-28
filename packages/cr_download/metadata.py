@@ -21,7 +21,7 @@ def parse_critrole_title(title):
     campaign_regex = "(?:Campaign (?P<campaign>\d+))?"
     episode_regex = "Ep(?:isode)? ?(?P<episode>\d+)"
 
-    cr_regex = re.compile("(?P<title>.*)[ |,:]*Critical Role[ |,:]*" +
+    cr_regex = re.compile("(?P<title>[^|]*)[ |,:]*Critical Role[ |,:]*" +
                           campaign_regex + "[ |,:]*" + episode_regex,
                           flags=re.I)
 
@@ -30,7 +30,7 @@ def parse_critrole_title(title):
     if match:
         ep_data["campaign"] = match.group("campaign")
         ep_data["episode"] = int(match.group("episode"))
-        ep_data["title"] = match.group("title")
+        ep_data["title"] = match.group("title").strip()
 
     return ep_data
 
@@ -81,7 +81,7 @@ def write_metadata_file(output_file, audio_files, streams):
             stream  = streams[title][0]
             episode_name_data = parse_critrole_title(stream["title"])
             ep_title = format_critrole_title(episode_name_data, short=False)
-            ep_id = format_critrole_title(campaign, episode)
+            ep_id = format_critrole_title(episode_name_data)
             if len(files) > 1:
                 ep_title += " part {}".format(part)
                 ep_id += "p{:02d}".format(part)
@@ -91,6 +91,9 @@ def write_metadata_file(output_file, audio_files, streams):
             ep["id"] = ep_id
             ep["airdate"] = stream["creation_date"]
             ep["file"] = os.path.abspath(audio_file)
+
+            if hasattr(stream, "description"):
+                ep["description"] = stream.description
 
             episodes[ep_id] = ep
 

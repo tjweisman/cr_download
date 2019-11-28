@@ -64,12 +64,12 @@ class YoutubeStreamData(stream_data.StreamData):
         self.json_data = data
         self.title = data["snippet"]["title"]
 
-        #convert these please
         self.creation_date = data["snippet"]["publishedAt"]
         self.length = str(_parse_iso_duration(
             data["contentDetails"]["duration"]))
 
         self.url = YOUTUBE_VIDEO_URL + data["id"]
+        self.description = data["snippet"]["description"]
         self.stream = DEFAULT_STREAM_QUALITY
 
     def download(self, output):
