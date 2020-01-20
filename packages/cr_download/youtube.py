@@ -10,6 +10,7 @@ from __future__ import print_function
 
 from datetime import timedelta
 import re
+import sys
 
 import requests
 import youtube_dl
@@ -17,11 +18,13 @@ import youtube_dl
 from cr_download.configuration import data as config
 from cr_download import stream_data
 
-YOUTUBE_API_KEY = "AIzaSyBBKd5es2ZjnxYrlZlqZSoTPCGmt6E7sJU"
+
 
 ISO_REGEX = re.compile(r"PT((?P<h>\d*)H)?((?P<m>\d*)M)?((?P<s>\d*)S)?")
 
 YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/"
+
+DEFAULT_API_KEY = "API_UNCONFIGURED"
 
 VIDEO_QUERY = "videos"
 CHANNEL_QUERY = "channels"
@@ -36,6 +39,14 @@ CRITROLE_YOUTUBE_ID = "UCpXBGqwsBkpvcYjsJBQ7LEQ"
 CRITROLE_CAMPAIGN_PLAYLIST = "Campaign 2: The Mighty Nein"
 
 DEFAULT_STREAM_QUALITY = "bestaudio/worst"
+
+def youtube_api_key():
+    key = config.youtube_api_key
+    if key == DEFAULT_API_KEY:
+        raise Exception("""YouTube API key has not been configured.
+        Specify a valid API key in the config file.""")
+
+    return key
 
 def _parse_iso_duration(duration):
     match = ISO_REGEX.match(duration)
@@ -87,7 +98,7 @@ class YoutubeStreamData(stream_data.StreamData):
 def get_video_data(ids):
     params = {"part":"contentDetails,snippet",
               "id":",".join(ids),
-              "key":YOUTUBE_API_KEY
+              "key":youtube_api_key()
     }
 
     response = requests.get(YOUTUBE_API_URL + VIDEO_QUERY,
@@ -97,7 +108,7 @@ def get_video_data(ids):
     return [YoutubeStreamData(video)
             for video in response.json()["items"]]
 
-def get_playlist_video_ids(playlist_id, limit=10, reverse=True):
+def get_playlist_video_ids(playlist_id, limit=10, reverse=False):
     """get video ids for items in the given playlist.
 
     if limit is negative, get everything in the list.
@@ -105,7 +116,7 @@ def get_playlist_video_ids(playlist_id, limit=10, reverse=True):
     """
     params = {"part":"contentDetails",
               "playlistId":playlist_id,
-              "key":YOUTUBE_API_KEY
+              "key":youtube_api_key()
     }
 
     video_ids = []
@@ -146,7 +157,7 @@ def get_critrole_main_playlist_id():
     """find the playlist id for the main Critical Role campaign playlist"""
     params = {"part":"snippet",
               "channelId":CRITROLE_YOUTUBE_ID,
-              "key":YOUTUBE_API_KEY}
+              "key":youtube_api_key()}
 
     initial_query = True
     while initial_query or "nextPageToken" in response.json():
@@ -170,7 +181,7 @@ def get_critrole_upload_playlist_id():
 
     params={"part":"contentDetails",
             "id":CRITROLE_YOUTUBE_ID,
-            "key":YOUTUBE_API_KEY}
+            "key":youtube_api_key()}
 
     response = requests.get(YOUTUBE_API_URL + CHANNEL_QUERY, params=params)
     response.raise_for_status()
@@ -178,7 +189,7 @@ def get_critrole_upload_playlist_id():
     for item in response.json()["items"]:
         return item["contentDetails"]["relatedPlaylists"]["uploads"]
 
-def get_recent_critrole_videos(limit=10):
+def get_recent_critrole_videos(limit=10, all_videos=False):
     """retrieve an array of json objects representing recent uploads to the
     Critical Role Mighty Nein playlist.
 
@@ -189,7 +200,7 @@ def get_recent_critrole_videos(limit=10):
 
     cr_playlist_id = get_critrole_main_playlist_id()
 
-    if cr_playlist_id:
+    if cr_playlist_id and not all_videos:
         video_ids = get_playlist_video_ids(cr_playlist_id, limit=limit, reverse=True)
     else:
         cr_playlist_id = get_critrole_upload_playlist_id()

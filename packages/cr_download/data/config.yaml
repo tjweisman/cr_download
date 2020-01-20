@@ -44,3 +44,6 @@ ffmpeg_path: ffmpeg
 # copy the twitch token you get by running
 # "streamlink --twitch-oauth-authenticate' here
 twitch_token: YOUR_TOKEN_HERE
+
+#needs to be manually configured
+youtube_api_key: API_UNCONFIGURED
