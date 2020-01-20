@@ -59,6 +59,10 @@ def _downloader_argparser():
                                Critical Role streams (twitch or
                                youtube). Default: youtube""")
 
+    download_args.add_argument("--youtube-all-uploads", action="store_true",
+                               help="""Look for videos among all uploads to the
+                               Critical Role channel, not just to a campaign playlist""")
+
     # regex arguments
     download_args.add_argument("-r", "--regex", default=DEFAULT_CR_REGEX,
                                help="""what regex to use when filtering for
@@ -161,7 +165,9 @@ def main(args):
     print("Retrieving recent streams...")
 
     if config.source == "youtube":
-        streams = youtube.get_recent_critrole_videos(limit=config.limit)
+        streams = youtube.get_recent_critrole_videos(
+            limit=config.limit,
+            all_videos=config.youtube_all_uploads)
     elif config.source == "twitch":
         streams = twitch_download.get_vod_list(limit=config.limit)
     else:

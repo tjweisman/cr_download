@@ -112,10 +112,13 @@ def intervals_to_keep(transition_times, cutting_pattern):
     transition_times = [0] + transition_times + [-1]
 
     for segment in cutting_pattern:
-        if transition_index + 1 >= len(transition_times):
+        if (transition_index + 1 >= len(transition_times)
+            and segment == KEEP):
             raise AutocutterException(
-                """Expected transition sequence does not match the
-                provided cutting pattern!"""
+                """Expected transition sequence does not match the provided cutting
+                pattern: index {} in transition time length {}""".format(
+                    transition_index, len(transition_times)
+                )
             )
         if segment == KEEP:
             intervals.append((transition_times[transition_index],
