@@ -18,7 +18,7 @@ pycryptodome==3.7.3
 PySocks==1.6.8
 python-utils==2.3.0
 requests==2.22.0
-rsa==4.0
+rsa==4.7
 six==1.12.0
 streamlink==1.0.0
 uritemplate==3.0.0
